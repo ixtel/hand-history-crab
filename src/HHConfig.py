@@ -175,6 +175,28 @@ class EventPlayerPostsBigBlind(Event):
 		return 'player "%s" posts big blind: %s' % (self.name, self.amount)
 
 
+class EventPreflop(Event):
+	"""
+	"""
+	Priority = 100
+	def __init__(self):
+		pass
+	def toString(self):
+		return 'PREFLOP'
+		
+
+class EventPlayerHoleCards(Event):
+	"""
+	@param name: (str) player name
+	"""
+	Priority = 100
+	def __init__(self, name='', cards=None):
+		self.name = name
+		self.cards = () if cards is None else cards
+	def toString(self):
+		return 'player "%s" hole cards [%s]' % (self.name, ' '.join(self.cards))
+
+
 class EventPlayerFolds(Event):
 	"""
 	@param name: (str) player name
@@ -260,6 +282,8 @@ class LineParserBase(object):
 		data = [{'lineno': lineno, 'line': line} for lineno, line in enumerate(lines)]
 		events = [None] * len(data)
 		for name in self.ParserMethodNames:
+			if not data:
+				break		
 			getattr(self, name)(data, events)
 		if data:
 			err = 'could not parse hand (lineno %s)\n' % data[0]['lineno']
