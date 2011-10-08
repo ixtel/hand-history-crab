@@ -1,5 +1,5 @@
 
-import sys
+import sys, calendar
 
 #************************************************************************************
 # consts
@@ -68,6 +68,13 @@ class Seats(object):
 		"""
 		seatNames = klass.SeatNames[nSeats]
 		return seatNames[seatNo]
+#************************************************************************************
+# helper methods
+#************************************************************************************
+def timestampFromDate(year, month, day, hour, minute, second):
+	"""converts a date to a timestamp"""
+	return calendar.timegm((int(year), int(month), int(day), int(hour), int(minute), int(second)))
+
 
 #************************************************************************************
 # events
@@ -109,7 +116,11 @@ class EventHandStart(Event):
 		self.bigBlind = bigBlind
 		self.ante = ante
 	def toString(self):
-		return 'Hand %s %s' % (self.site, self.game)
+		return 'HAND %s %s %s tourneyID: "%s" handID: "%s" time: %s tableName: "%s" maxPlayers: %s currency: %s smallBlind: %s bigBlind: %s ante: %s' % (
+				self.site, self.game, self.gameLimit, self.tourneyID, self.handID, self.timestamp, 
+				self.tableName, self.maxPlayers, self.currency, self.smallBlind, self.bigBlind,
+				self.ante
+				)
 
 class EventPlayer(Event):
 	def __init__(self, name='', stack=0.0, seatNo=0, seatName='', buttonOrder=0, sitsOut=False):
@@ -176,7 +187,33 @@ class EventPreflop(Event):
 		pass
 	def toString(self):
 		return 'PREFLOP'
+
+class EventFlop(Event):
+	"""
+	"""
+	def __init__(self, cards=None):
+		self.cards = () if cards is None else cards
+	def toString(self):
+		return 'FLOP [%s]' % ' '.join(self.cards)
 		
+
+class EventTurn(Event):
+	"""
+	"""
+	def __init__(self, card=''):
+		self.card =card
+	def toString(self):
+		return 'TURN [%s]' % self.card
+
+
+class EventRiver(Event):
+	"""
+	"""
+	def __init__(self, card=''):
+		self.card =card
+	def toString(self):
+		return 'RIVER [%s]' % self.card
+
 
 class EventPlayerHoleCards(Event):
 	"""
@@ -189,6 +226,16 @@ class EventPlayerHoleCards(Event):
 		return 'player "%s" hole cards [%s]' % (self.name, ' '.join(self.cards))
 
 
+class EventPlayerChecks(Event):
+	"""
+	@param name: (str) player name
+	"""
+	def __init__(self, name=''):
+		self.name = name
+	def toString(self):
+		return 'player "%s" checks' % self.name
+
+
 class EventPlayerFolds(Event):
 	"""
 	@param name: (str) player name
@@ -197,6 +244,41 @@ class EventPlayerFolds(Event):
 		self.name = name
 	def toString(self):
 		return 'player "%s" folds' % self.name
+
+
+class EventPlayerBets(Event):
+	def __init__(self, name='', amount=0.0):
+		"""
+		@param name: (str) player name
+		@param amount: (float) amount raised to
+		"""
+		self.name = name
+		self.amount = amount
+	def toString(self):
+		return 'player "%s" bets: %s' % (self.name, self.amount)
+
+
+class EventPlayerRaises(Event):
+	def __init__(self, name='', amount=0.0):
+		"""
+		@param name: (str) player name
+		@param amount: (float) amount raised to
+		"""
+		self.name = name
+		self.amount = amount
+	def toString(self):
+		return 'player "%s" raises to: %s' % (self.name, self.amount)
+		
+class EventPlayerCalls(Event):
+	def __init__(self, name='', amount=0.0):
+		"""
+		@param name: (str) player name
+		@param amount: (float) amount called
+		"""
+		self.name = name
+		self.amount = amount
+	def toString(self):
+		return 'player "%s" calls: %s' % (self.name, self.amount)
 
 #************************************************************************************
 # parser base functionality
