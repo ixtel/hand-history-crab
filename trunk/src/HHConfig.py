@@ -257,7 +257,7 @@ class LineParserBase(object):
 		pass
 				
 	def feed(self, lines):
-		data = [{'lineno': lineno, 'line': line.strip()} for lineno, line in enumerate(lines) if line.strip()]
+		data = [{'lineno': lineno, 'line': line} for lineno, line in enumerate(lines)]
 		events = [None] * len(data)
 		for name in self.ParserMethodNames:
 			getattr(self, name)(data, events)
