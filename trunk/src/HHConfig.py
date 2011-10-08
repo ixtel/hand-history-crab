@@ -1,5 +1,5 @@
 
-import sys, operator
+import sys
 
 #************************************************************************************
 # consts
@@ -73,7 +73,6 @@ class Seats(object):
 # events
 #************************************************************************************
 class Event(object):
-	Priority = 0
 	@classmethod
 	def __eq__(klass, other):
 		return klass == other
@@ -81,7 +80,6 @@ class Event(object):
 	def __ne__(klass, other): not klass.__eq__(other)
 	
 class EventHandStart(Event):
-	Priority = 1
 	def __init__(self, 
 			lines=None, 
 			site=SiteNone, 
@@ -114,7 +112,6 @@ class EventHandStart(Event):
 		return 'Hand %s %s' % (self.site, self.game)
 
 class EventPlayer(Event):
-	Priority = 10
 	def __init__(self, name='', stack=0.0, seatNo=0, seatName='', buttonOrder=0, sitsOut=False):
 		"""
 		@param name: (str) player name
@@ -139,7 +136,6 @@ class EventPlayer(Event):
 	
 
 class EventPlayerSitsOut(Event):
-	Priority = 100
 	def __init__(self, name=''):
 		"""
 		@param name: (str) player name
@@ -150,7 +146,6 @@ class EventPlayerSitsOut(Event):
 
 
 class EventPlayerPostsSmallBlind(Event):
-	Priority = 100
 	def __init__(self, name='', amount=0.0):
 		"""
 		@param name: (str) player name
@@ -163,7 +158,6 @@ class EventPlayerPostsSmallBlind(Event):
 
 
 class EventPlayerPostsBigBlind(Event):
-	Priority = 100
 	def __init__(self, name='', amount=0.0):
 		"""
 		@param name: (str) player name
@@ -178,7 +172,6 @@ class EventPlayerPostsBigBlind(Event):
 class EventPreflop(Event):
 	"""
 	"""
-	Priority = 100
 	def __init__(self):
 		pass
 	def toString(self):
@@ -189,7 +182,6 @@ class EventPlayerHoleCards(Event):
 	"""
 	@param name: (str) player name
 	"""
-	Priority = 100
 	def __init__(self, name='', cards=None):
 		self.name = name
 		self.cards = () if cards is None else cards
@@ -201,7 +193,6 @@ class EventPlayerFolds(Event):
 	"""
 	@param name: (str) player name
 	"""
-	Priority = 100
 	def __init__(self, name=''):
 		self.name = name
 	def toString(self):
@@ -291,9 +282,8 @@ class LineParserBase(object):
 			err += '\n'
 			err += '\n'.join(lines)
 			raise ParserError(err)	
-		events = [event for event in events if event is not None]
-		events.sort(key=operator.attrgetter('Priority'))
-		return events
+		return [event for event in events if event is not None]
+		
 
 
 
