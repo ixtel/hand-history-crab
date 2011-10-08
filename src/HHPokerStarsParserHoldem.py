@@ -43,14 +43,14 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 				(?P<minute>\d+)\:
 				(?P<second>\d+)
 				.*
-			\]$
+			\]\s*$
 		""", re.X 
 		)
 	PatternTableHeader = re.compile(
 		"""^Table\s \'(?P<tableName>[^\']+)\'\s
 			(?P<maxPlayers>\d+)\-max\s
 			Seat\s\#(?P<seatNoButton>\d+)\sis\sthe\sbutton
-			$
+			\s*$
 		""", re.X
 		)
 	
@@ -79,10 +79,10 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 					[^\d\.]?(?P<stack>[\d\.]+)\sin\schips
 				\)
 				(?P<sitsOut>\s is\s sitting\s out)?
-				$
+				\s*$
 		""", re.X
 		)
-	PatternPlayerSitsOut = re.compile("""^(?P<name>.*?)\:\s (sits\s out | is\s sitting\s out)$
+	PatternPlayerSitsOut = re.compile("""^(?P<name>.*?)\:\s (sits\s out | is\s sitting\s out)\s*$
 		""", re.X
 		)
 	@HHConfig.LineParserMethod(priority=10)
@@ -104,32 +104,24 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 		playerNames = []
 		for item in data:
 			m = self.PatternPlayer.match(item['line'])
-			if m is not None:
-				items.append(item)
-				d = m.groupdict()
-				d['seatNo'] = int(d['seatNo'])
-				d['stack'] = self.stringToFloat(d['stack'])
-				d['sitsOut'] = bool(d['sitsOut'])
-				eventPlayer =  HHConfig.EventPlayer(**d)
-				events[item['lineno']] = eventPlayer
-				players.append(eventPlayer)
-				playerNames.append(d['name'])
+			if m is None:
+				break
+			items.append(item)
+			d = m.groupdict()
+			d['seatNo'] = int(d['seatNo'])
+			d['stack'] = self.stringToFloat(d['stack'])
+			d['sitsOut'] = bool(d['sitsOut'])
+			eventPlayer =  HHConfig.EventPlayer(**d)
+			events[item['lineno']] = eventPlayer
+			players.append(eventPlayer)
+			playerNames.append(d['name'])
 		for item in items:
 			data.remove(item)
 		
 		# determine seat names
-		right = []
-		left = []
-		for player in players:
-			if player.seatNo < self._seatNoButton:
-				right.append(player)
-			elif player.seatNo > self._seatNoButton:
-				left.append(player)
-			else:
-				left.append(player)
-		myPlayers = left + right
-		for buttonOrder, seatName in enumerate(HHConfig.Seats.SeatNames[len(myPlayers)]):
-			player = myPlayers[buttonOrder]
+		players =  players[self._seatNoButton-1:] + players[:self._seatNoButton-1]
+		for buttonOrder, seatName in enumerate(HHConfig.Seats.SeatNames[len(players)]):
+			player = players[buttonOrder]
 			player.seatName = seatName
 			player.buttonOrder = buttonOrder +1
 				
@@ -150,7 +142,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 					
 	
 	PatternPlayerPostsSmallBlind = re.compile(
-		"""^(?P<name>.*?)\:\sposts\ssmall\sblind\s[^\d\.]?(?P<amount>[\d\.]+)
+		"""^(?P<name>.*?)\:\sposts\ssmall\sblind\s[^\d\.]?(?P<amount>[\d\.]+)\s*$
 		""", re.X 
 		)				
 	@HHConfig.LineParserMethod(priority=50)
@@ -166,12 +158,11 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 		
 	
 	PatternPlayerPostsBigBlind = re.compile(
-		"""^(?P<name>.*?)\:\sposts\sbig\sblind\s[^\d\.]?(?P<amount>[\d\.]+)
+		"""^(?P<name>.*?)\:\sposts\sbig\sblind\s[^\d\.]?(?P<amount>[\d\.]+)\s*$
 		""", re.X 
 		)				
 	@HHConfig.LineParserMethod(priority=50)
 	def parsePlayerPostsBigBlind(self, data, events):
-		print data
 		items = []
 		for item in data:
 			m = self.PatternPlayerPostsBigBlind.match(item['line'])
@@ -183,7 +174,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 	
 	
 	PatternPlayerFolds = re.compile(
-		"^(?P<name>.*?)\:\s folds$", re.X
+		"^(?P<name>.*?)\:\s folds\s*$", re.X
 		)
 	@HHConfig.LineParserMethod(priority=100)
 	def parsePlayerFolds(self, data, events):
@@ -196,60 +187,30 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 		for item in items:
 			data.remove(item)
 		
-		
+	
+	PatternEmptyLine = re.compile('^.*$')
+	@HHConfig.LineParserMethod(priority=9999)
+	def parseEmptyLines(self, lineBuffer, events):
+		while lineBuffer:
+			if self.PatternEmptyLine.match(lineBuffer.pop()['line']) is None:
+				lineBuffer.push()	
 		
 	
-	
-hh = '''PokerStars Game #56441606094:  Hold'em No Limit ($0.01/$0.02 USD) - 2011/01/23 21:09:53 CET [2011/01/23 15:09:53 ET]
-Table 'Mattiaca XVII' 6-max Seat #3 is the button
-Seat 1: elanto19 ($1.68 in chips) 
-Seat 2: hamtitam ($2.76 in chips) 
-Seat 3: NCBB ($1.68 in chips) 
-Seat 4: failertb ($4.98 in chips) 
-Seat 5: Barny58 ($1.33 in chips)
-Seat 6: gracher11 ($2 in chips) 
-failertb: posts small blind $0.01
-Barny58: posts big blind $0.02
 
-'''
-'''
-*** HOLE CARDS ***
-Dealt to failertb [Td 2s]
-gracher11: folds 
-elanto19: folds 
-hamtitam: folds 
-NCBB: raises $0.02 to $0.04
-failertb: folds 
-Barny58: calls $0.02
-*** FLOP *** [Ts Kd 7h]
-Barny58: checks 
-NCBB: bets $0.06
-Barny58: calls $0.06
-*** TURN *** [Ts Kd 7h] [Kc]
-Barny58: checks 
-NCBB: bets $0.20
-Barny58: calls $0.20
-*** RIVER *** [Ts Kd 7h Kc] [Qc]
-Barny58: checks 
-NCBB: checks 
-*** SHOW DOWN ***
-Barny58: shows [Kh Jc] (three of a kind, Kings)
-NCBB: mucks hand 
-Barny58 collected $0.58 from pot
-*** SUMMARY ***
-Total pot $0.61 | Rake $0.03 
-Board [Ts Kd 7h Kc Qc]
-Seat 1: elanto19 folded before Flop (didn't bet)
-Seat 2: hamtitam folded before Flop (didn't bet)
-Seat 3: NCBB (button) mucked [8h 8d]
-Seat 4: failertb (small blind) folded before Flop
-Seat 5: Barny58 (big blind) showed [Kh Jc] and won ($0.58) with three of a kind, Kings
-Seat 6: gracher11 folded before Flop (didn't bet)
-'''
-#Table 'Mattiaca XVII' 6-max Seat #3 is the button
+if __name__ == '__main__':
+	import cProfile as profile	
+	from oo1 import hh
+	hh = hh.split('\n')
+	p = PokerStarsParserHoldemEN()
+	for event in p.feed(hh):
+		print event.toString()
 
-p = PokerStarsParserHoldemEN()
-for event in p.feed(hh.split('\n')):
-	print event.toString()
+	def test():
+		for i in xrange(40000):
+			for event in p.feed(hh):
+				pass
+				#print event.toString()
+
+	##profile.run('test()')
 
 	
