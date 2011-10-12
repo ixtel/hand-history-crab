@@ -1,6 +1,6 @@
 
-from HhConfig import *
-from HhPokerStarsHandHistoryFile import *
-from HhPokerStarsParserHoldem import *
+from HcConfig import *
+from HcPokerStarsHandHistoryFile import *
+from HcPokerStarsParserHoldem import *
 
 
