@@ -1,5 +1,6 @@
 import re
-import HHConfig
+import HcConfig
+import HcPokerStarsConfig
 
 #NOTES:
 #
@@ -25,35 +26,35 @@ import HHConfig
 #************************************************************************************
 # consts
 #************************************************************************************
-GameMapping = {
-		"Hold'em": HHConfig.GameHoldem,
+HcPokerStarsConfig.GameMapping = {
+		"Hold'em": HcConfig.GameHoldem,
 		}
 
-GameLimitMapping = {
-		"No Limit": HHConfig.GameLimitNoLimit,
+HcPokerStarsConfig.GameLimitMapping = {
+		"No Limit": HcConfig.GameLimitNoLimit,
 		}
 
-CurrencyMapping = {
-		'USD': HHConfig.CurrencyDollar,
+HcPokerStarsConfig.CurrencyMapping = {
+		'USD': HcConfig.CurrencyDollar,
 		}
 	
 
 #************************************************************************************
 # parser implementation
 #************************************************************************************
-class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
+class PokerStarsParserHoldemEN(HcConfig.LineParserBase):
 	
-	Site = HHConfig.SitePokerStars
-	Game = HHConfig.GameHoldem
-	Language = HHConfig.LanguageEN
+	Site = HcConfig.SitePokerStars
+	Game = HcConfig.GameHoldem
+	Language = HcConfig.LanguageEN
 		
 	def __init__(self, *args, **kws):
-		HHConfig.LineParserBase.__init__(self, *args, **kws)
+		HcConfig.LineParserBase.__init__(self, *args, **kws)
 		self._seatNoButton = 0
 	
 	def feed(self, *args, **kws):
 		self._seatNoButton = 0
-		return HHConfig.LineParserBase.feed(self, *args, **kws)
+		return HcConfig.LineParserBase.feed(self, *args, **kws)
 		
 	def stringToFloat(self, amount):
 		return float(amount)
@@ -91,7 +92,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 		""", re.X|re.I
 		)
 	
-	@HHConfig.LineParserMethod(priority=1)
+	@HcConfig.LineParserMethod(priority=1)
 	def parseHandStart(self, data, handlers):
 		if len(data) < 2:
 			return
@@ -108,14 +109,14 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 		d.update(m.groupdict())
 		self._seatNoButton = int(d.pop('seatNoButton'))
 		d['site'] = self.site()
-		d['game'] = GameMapping[d['game']]
-		d['gameLimit'] = GameLimitMapping[d['gameLimit']]
-		d['currency'] = CurrencyMapping[d['currency']]
+		d['game'] = HcPokerStarsConfig.GameMapping[d['game']]
+		d['gameLimit'] = HcPokerStarsConfig.GameLimitMapping[d['gameLimit']]
+		d['currency'] = HcPokerStarsConfig.CurrencyMapping[d['currency']]
 		d['bigBlind'] = self.stringToFloat(d['bigBlind'])
 		d['smallBlind'] = self.stringToFloat(d['smallBlind'])
 		d['maxPlayers'] = int(d['maxPlayers'])
-		d['timestamp'] = HHConfig.timestampFromDate(
-								HHConfig.TimeZoneET,
+		d['timestamp'] = HcConfig.timestampFromDate(
+								HcConfig.TimeZoneET,
 								d.pop('year'), 
 								d.pop('month'), 
 								d.pop('day'), 
@@ -139,7 +140,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 	PatternPlayerSitsOut = re.compile("""^(?P<name>.*?)\:\s (sits\s out | is\s sitting\s out)\s*$
 		""", re.X|re.I
 		)
-	@HHConfig.LineParserMethod(priority=10)
+	@HcConfig.LineParserMethod(priority=10)
 	def parsePlayer(self, data, handlers):
 		
 		# cash game: stars does not report a player sitting out initially (seatNo, stackSize)
@@ -173,7 +174,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 		
 		# determine seat names
 		players =  players[self._seatNoButton-1:] + players[:self._seatNoButton-1]
-		for buttonOrder, seatName in enumerate(HHConfig.Seats.SeatNames[len(players)]):
+		for buttonOrder, seatName in enumerate(HcConfig.Seats.SeatNames[len(players)]):
 			player = players[buttonOrder]
 			player['seatName'] = seatName
 			player['buttonOrder'] = buttonOrder +1
@@ -199,7 +200,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 		"""^(?P<name>.*?)\:\sposts\ssmall\sblind\s[^\d\.]?(?P<amount>[\d\.]+)\s*$
 		""", re.X|re.I 
 		)				
-	@HHConfig.LineParserMethod(priority=45)
+	@HcConfig.LineParserMethod(priority=45)
 	def parsePlayerPostsSmallBlind(self, data, handlers):
 		items = []
 		for item in data:
@@ -218,7 +219,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 		"""^(?P<name>.*?)\:\sposts\sbig\sblind\s[^\d\.]?(?P<amount>[\d\.]+)\s*$
 		""", re.X|re.I 
 		)				
-	@HHConfig.LineParserMethod(priority=50)
+	@HcConfig.LineParserMethod(priority=50)
 	def parsePlayerPostsBigBlind(self, data, handlers):
 		items = []
 		for item in data:
@@ -233,7 +234,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 	
 	
 	PatternPreflop = re.compile("""^^\*\*\*\sHOLE\sCARDS\s\*\*\*$\s*$""")				
-	@HHConfig.LineParserMethod(priority=100)
+	@HcConfig.LineParserMethod(priority=100)
 	def parsePreflop(self, data, handlers):
 		for item in data:
 			m = self.PatternPreflop.match(item['line'])
@@ -246,7 +247,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 		"^Dealt\s to\s (?P<name>.*?)\s \[(?P<card1>[23456789TJQKA][cdhs])\s(?P<card2>[23456789TJQKA][cdhs])\]\s*$", 
 		re.X|re.I
 		)
-	@HHConfig.LineParserMethod(priority=150)
+	@HcConfig.LineParserMethod(priority=150)
 	def parsePlayerPlayerHoleCards(self, data, handlers):
 		for item in data:
 			m = self.PatternPlayerHoleCards.match(item['line'])
@@ -261,7 +262,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 	PatternPlayerChecks = re.compile(
 		"^(?P<name>.*?)\:\s checks\s*$", re.X|re.I
 		)
-	@HHConfig.LineParserMethod(priority=160)
+	@HcConfig.LineParserMethod(priority=160)
 	def parsePlayerChecks(self, data, handlers):
 		items = []
 		for item in data:
@@ -276,7 +277,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 	PatternPlayerFolds = re.compile(
 		"^(?P<name>.*?)\:\s folds\s*$", re.X|re.I
 		)
-	@HHConfig.LineParserMethod(priority=160)
+	@HcConfig.LineParserMethod(priority=160)
 	def parsePlayerFolds(self, data, handlers):
 		items = []
 		for item in data:
@@ -291,7 +292,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 	PatternPlayerBets = re.compile(
 		"^(?P<name>.*?)\:\s bets\s [^\d\.]?(?P<amount>[\d\.]+) (\s and\s is\s all\-in)?\s*$", re.X|re.I
 		)
-	@HHConfig.LineParserMethod(priority=160)
+	@HcConfig.LineParserMethod(priority=160)
 	def parsePlayerBets(self, data, handlers):
 		items = []
 		for item in data:
@@ -308,7 +309,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 	PatternPlayerRaises = re.compile(
 		"^(?P<name>.*?)\:\s raises\s .*? to\s [^\d\.]?(?P<amount>[\d\.]+) (\s and\s is\s all\-in)?\s*$", re.X|re.I
 		)
-	@HHConfig.LineParserMethod(priority=160)
+	@HcConfig.LineParserMethod(priority=160)
 	def parsePlayerRaises(self, data, handlers):
 		items = []
 		for item in data:
@@ -325,7 +326,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 	PatternPlayerCalls = re.compile(
 		"^(?P<name>.*?)\:\s calls\s [^\d\.]?(?P<amount>[\d\.]+) (\s and\s is\s all\-in)?\s*$", re.X|re.I
 		)
-	@HHConfig.LineParserMethod(priority=160)
+	@HcConfig.LineParserMethod(priority=160)
 	def parsePlayerCalls(self, data, handlers):
 		items = []
 		for item in data:
@@ -348,7 +349,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 	\s*$""", re.X|re.I
 	
 	)				
-	@HHConfig.LineParserMethod(priority=200)
+	@HcConfig.LineParserMethod(priority=200)
 	def parsFlop(self, data, handlers):
 		for item in data:
 			m = self.PatternFlop.match(item['line'])
@@ -367,7 +368,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 	\]
 	\s*$""", re.X|re.I
 	)				
-	@HHConfig.LineParserMethod(priority=200)
+	@HcConfig.LineParserMethod(priority=200)
 	def parsTurn(self, data, handlers):
 		for item in data:
 			m = self.PatternTurn.match(item['line'])
@@ -385,7 +386,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 	\]
 	\s*$""", re.X|re.I
 	)				
-	@HHConfig.LineParserMethod(priority=200)
+	@HcConfig.LineParserMethod(priority=200)
 	def parsRiver(self, data, handlers):
 		for item in data:
 			m = self.PatternRiver.match(item['line'])
@@ -396,7 +397,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 				break
 	
 	PatternShowDown = re.compile("""^^\*\*\*\sSHOW\sDOWN\s\*\*\*\s*$""")				
-	@HHConfig.LineParserMethod(priority=300)
+	@HcConfig.LineParserMethod(priority=300)
 	def parseShowDown(self, data, handlers):
 		for item in data:
 			m = self.PatternShowDown.match(item['line'])
@@ -409,7 +410,7 @@ class PokerStarsParserHoldemEN(HHConfig.LineParserBase):
 	
 	
 	PatternEmptyLine = re.compile('^\s*$')
-	@HHConfig.LineParserMethod(priority=9999)
+	@HcConfig.LineParserMethod(priority=9999)
 	def parseEmptyLines(self, data, handlers):
 		items = []
 		for item in data:
@@ -423,7 +424,7 @@ if __name__ == '__main__':
 	import cProfile as profile	
 	from oo1 import hh
 	hh = hh.split('\n')
-	p = PokerStarsParserHoldemEN(HHConfig.HandHoldemDebug())
+	p = PokerStarsParserHoldemEN(HcConfig.HandHoldemDebug())
 	hand = p.feed(hh)
 
 	def test():
