@@ -43,6 +43,7 @@ class PokerStarsHandHistoryFile(object):
 		self._lines = lines
 		self._parse()	
 		
+	#TODO: file looks like a HandHistory to us but is a 10gigs of garbage? 
 	def _parse(self):
 		handHistory = None
 		for line in self._lines:
