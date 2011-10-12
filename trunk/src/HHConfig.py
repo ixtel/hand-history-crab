@@ -1,11 +1,15 @@
 
-import sys, calendar
+import sys, calendar, inspect
 
 #************************************************************************************
 # consts
 #************************************************************************************
 LineFeed = '\r' if sys.platform == 'Darwin' else '\n'
 TimeNone = 0
+
+TimeZoneNone = ''
+TimeZoneET = 'ET'
+
 
 SiteNone = ''
 SitePokerStars = 'PokerStars'
@@ -71,23 +75,22 @@ class Seats(object):
 #************************************************************************************
 # helper methods
 #************************************************************************************
-def timestampFromDate(year, month, day, hour, minute, second):
+def timestampFromDate(timeZone, year, month, day, hour, minute, second):
 	"""converts a date to a timestamp"""
-	return calendar.timegm((int(year), int(month), int(day), int(hour), int(minute), int(second)))
+	t = calendar.timegm((int(year), int(month), int(day), int(hour), int(minute), int(second)))
+	if timeZone == TimeZoneET:
+		t += 18000	# ET + 5 hours == UTC
+	else:
+		raise ValueError('timeZone "%s" not implemented' % timeZone)
+	return t
 
 
 #************************************************************************************
-# events
+# hand types
 #************************************************************************************
-class Event(object):
-	@classmethod
-	def __eq__(klass, other):
-		return klass == other
-	@classmethod
-	def __ne__(klass, other): not klass.__eq__(other)
+class HandHoldem(object):
 	
-class EventHandStart(Event):
-	def __init__(self, 
+	def handleHandStart(self, 
 			lines=None, 
 			site=SiteNone, 
 			tourneyID='',
@@ -102,28 +105,9 @@ class EventHandStart(Event):
 			bigBlind=0.0,
 			ante=0.0,
 			):
-		self.lines = [] if lines is None else lines
-		self.site = site
-		self.tourneyID = tourneyID
-		self.handID = handID
-		self.game = game
-		self.gameLimit = gameLimit
-		self.timestamp = timestamp
-		self.tableName = tableName
-		self.maxPlayers = maxPlayers
-		self.currency = currency
-		self.smallBlind = smallBlind
-		self.bigBlind = bigBlind
-		self.ante = ante
-	def toString(self):
-		return 'HAND %s %s %s tourneyID: "%s" handID: "%s" time: %s tableName: "%s" maxPlayers: %s currency: %s smallBlind: %s bigBlind: %s ante: %s' % (
-				self.site, self.game, self.gameLimit, self.tourneyID, self.handID, self.timestamp, 
-				self.tableName, self.maxPlayers, self.currency, self.smallBlind, self.bigBlind,
-				self.ante
-				)
-
-class EventPlayer(Event):
-	def __init__(self, name='', stack=0.0, seatNo=0, seatName='', buttonOrder=0, sitsOut=False):
+		""""""
+		
+	def handlePlayer(self, name='', stack=0.0, seatNo=0, seatName='', buttonOrder=0, sitsOut=False):
 		"""
 		@param name: (str) player name
 		@param seatNo: (int) 1 based seat number
@@ -134,159 +118,101 @@ class EventPlayer(Event):
 		bool(seatNo). in tourneys players are dealt into the hand (and alowed to act) 
 		regardless of the sitsOut flag.
 		"""
-		self.name = name
-		self.stack = stack
-		self.seatNo = seatNo
-		self.seatName = seatName
-		self.buttonOrder = buttonOrder
-		self.sitsOut = sitsOut
-	def toString(self):
-		return 'player: "%s" seatNo: %s seatName: %s buttonOrder: %s stack: %s sitsOut: %s' % (
-				self.name, self.seatNo, self.seatName, self.buttonOrder, self.stack, self.sitsOut
-				)
 	
-
-class EventPlayerSitsOut(Event):
-	def __init__(self, name=''):
+	def handlePlayerSitsOut(self, name=''):
 		"""
 		@param name: (str) player name
 		"""
-		self.name = name
-	def toString(self):
-		return 'player "%s" sits out' % self.name
-
-
-class EventPlayerPostsSmallBlind(Event):
-	def __init__(self, name='', amount=0.0):
+	
+	def handlePlayerPostsSmallBlind(self, name='', amount=0.0):
 		"""
 		@param name: (str) player name
 		@param amount: (float) amount posted
 		"""
-		self.name = name
-		self.amount = amount
-	def toString(self):
-		return 'player "%s" posts small blind: %s' % (self.name, self.amount)
-
-
-class EventPlayerPostsBigBlind(Event):
-	def __init__(self, name='', amount=0.0):
+		
+	def handlePlayerPostsBigBlind(self, name='', amount=0.0):
 		"""
 		@param name: (str) player name
 		@param amount: (float) amount posted
 		"""
-		self.name = name
-		self.amount = amount
-	def toString(self):
-		return 'player "%s" posts big blind: %s' % (self.name, self.amount)
-
-
-class EventPreflop(Event):
-	"""
-	"""
-	def __init__(self):
-		pass
-	def toString(self):
-		return 'PREFLOP'
-
-class EventFlop(Event):
-	"""
-	"""
-	def __init__(self, cards=None):
-		self.cards = () if cards is None else cards
-	def toString(self):
-		return 'FLOP [%s]' % ' '.join(self.cards)
+	
+	def handlePreflop(self):
+		""""""
 		
-
-class EventTurn(Event):
-	"""
-	"""
-	def __init__(self, card=''):
-		self.card =card
-	def toString(self):
-		return 'TURN [%s]' % self.card
-
-
-class EventRiver(Event):
-	"""
-	"""
-	def __init__(self, card=''):
-		self.card =card
-	def toString(self):
-		return 'RIVER [%s]' % self.card
-
-
-class EventPlayerHoleCards(Event):
-	"""
-	@param name: (str) player name
-	"""
-	def __init__(self, name='', cards=None):
-		self.name = name
-		self.cards = () if cards is None else cards
-	def toString(self):
-		return 'player "%s" hole cards [%s]' % (self.name, ' '.join(self.cards))
-
-
-class EventPlayerChecks(Event):
-	"""
-	@param name: (str) player name
-	"""
-	def __init__(self, name=''):
-		self.name = name
-	def toString(self):
-		return 'player "%s" checks' % self.name
-
-
-class EventPlayerFolds(Event):
-	"""
-	@param name: (str) player name
-	"""
-	def __init__(self, name=''):
-		self.name = name
-	def toString(self):
-		return 'player "%s" folds' % self.name
-
-
-class EventPlayerBets(Event):
-	def __init__(self, name='', amount=0.0):
+	def handleFlop(self, cards=None):
+		""""""
+		
+	def handleTurn(self, card=''):
+		""""""
+		
+	def handleRiver(self, card=''):
+		""""""
+		
+	def handleShowDown(self):
+		""""""
+		
+	def handlePlayerHoleCards(self, name='', cards=None):
+		"""
+		@param name: (str) player name
+		"""
+		
+	def handlePlayerChecks(self, name=''):
+		"""
+		@param name: (str) player name
+		"""
+		
+	def handlePlayerFolds(self, name=''):
+		"""
+		@param name: (str) player name
+		"""
+		
+	def handlePlayerBets(self, name='', amount=0.0):
+		"""
+		@param name: (str) player name
+		@param amount: (float) amount bet
+		"""
+		
+	def handlePlayerRaises(self, name='', amount=0.0):
 		"""
 		@param name: (str) player name
 		@param amount: (float) amount raised to
 		"""
-		self.name = name
-		self.amount = amount
-	def toString(self):
-		return 'player "%s" bets: %s' % (self.name, self.amount)
-
-
-class EventPlayerRaises(Event):
-	def __init__(self, name='', amount=0.0):
-		"""
-		@param name: (str) player name
-		@param amount: (float) amount raised to
-		"""
-		self.name = name
-		self.amount = amount
-	def toString(self):
-		return 'player "%s" raises to: %s' % (self.name, self.amount)
 		
-class EventPlayerCalls(Event):
-	def __init__(self, name='', amount=0.0):
+	def handlePlayerCalls(self, name='', amount=0.0):
 		"""
 		@param name: (str) player name
 		@param amount: (float) amount called
 		"""
-		self.name = name
-		self.amount = amount
-	def toString(self):
-		return 'player "%s" calls: %s' % (self.name, self.amount)
+	
 
+class HandHoldemDebug(HandHoldem):
+		
+	class FuncWrapper(object):
+		@classmethod
+		def fromObject(klass, name, obj):
+			if inspect.ismethod(obj) and name.startswith('handle'):
+				return klass(name, obj)
+			return obj
+		def __init__(self, name, func):
+				self.name = name
+				self.func = func
+		def __call__(self, *args, **kws):
+			print self.name[6:], kws
+		
+	def __getattribute__(self, name):
+		obj = object.__getattribute__(self, name)
+		return object.__getattribute__(self,'FuncWrapper').fromObject(name, obj)
+		
 #************************************************************************************
 # parser base functionality
 #************************************************************************************
 Parsers = []	# list containing all parsers
 
 
-class ParserError(Exception): pass
+class ParseError(Exception):
+		def __init__(self, msg, lineno=0):
+			self.lineno = lineno
+			Exception.__init__(self, msg)
 
 
 class LineParserMethod(object):
@@ -326,11 +252,11 @@ class LineParserBase(object):
 	data: (list) of dicts {lineno, line} of the hand history
 	events: a list containg len(data) None's that needs to be filled by the methods with events
 	
-	the parser iterates over all parse methods, feeding data and events list to the
+	the parser iterates over all parse methods, feeding data and a list of handlers to the
 	next method in turn. each method should remove the lines it processed from the data
-	and place an event(s) into the according slot(s) of the events list. None events will
-	be ignored. if there is data left when iteration over methods is finished the 	parser 
-	will throw a ParseError().
+	and place the handler and kws into the according slot(s) of the handler list. None members 
+	in this list will be ignored. if there is data left when iteration over methods is finished 
+	the parser will throw a ParseError().
 	
 	usage: feed() data to the parser and iterate over the returned events.
 	"""
@@ -348,25 +274,30 @@ class LineParserBase(object):
 	@classmethod
 	def language(klass): return klass.Language
 		
-	def __init__(self):
-		pass
+	def __init__(self, hand):
+		self.hand = hand
 				
 	def feed(self, lines):
 		data = [{'lineno': lineno, 'line': line} for lineno, line in enumerate(lines)]
-		events = [None] * len(data)
+		handlers = [None]*len(data)
 		for name in self.ParserMethodNames:
 			if not data:
 				break		
-			getattr(self, name)(data, events)
+			getattr(self, name)(data, handlers)
 		if data:
 			err = 'could not parse hand (lineno %s)\n' % data[0]['lineno']
 			err += 'line: %s\n' % data[0]['line']
 			err += '\n'
 			err += '\n'.join(lines)
-			raise ParserError(err)	
-		return [event for event in events if event is not None]
+			raise ParseError(err, data[0]['lineno'])	
 		
-
-
+		for item in handlers:
+			if item is not None:
+				item[0](**item[1])
+		return self.hand
+	
+		
+	
+	
 
 
