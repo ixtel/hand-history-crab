@@ -6,7 +6,7 @@ from PtCard import Card
 from PtHand import Hand
 
 #************************************************************************************
-#
+# unittest for PokerTools
 #************************************************************************************
 class TestHandRangeHoldem(unittest.TestCase):
 	

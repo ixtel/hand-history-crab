@@ -1,7 +1,9 @@
+
 import unittest
 from PtPot import Pot
+
 #************************************************************************************
-# unittest for PokerTools.py
+# unittest for PokerTools
 #************************************************************************************
 class TestPot(unittest.TestCase):
 	
