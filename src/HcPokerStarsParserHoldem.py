@@ -1,6 +1,7 @@
 import re
 import HcConfig
 import HcPokerStarsConfig
+from HcLib.PokerTools import PtSeats
 
 #NOTES:
 #
@@ -174,7 +175,7 @@ class PokerStarsParserHoldemEN(HcConfig.LineParserBase):
 		
 		# determine seat names
 		players =  players[self._seatNoButton-1:] + players[:self._seatNoButton-1]
-		for buttonOrder, seatName in enumerate(HcConfig.Seats.SeatNames[len(players)]):
+		for buttonOrder, seatName in enumerate(PtSeats.Seats.SeatNames[len(players)]):
 			player = players[buttonOrder]
 			player['seatName'] = seatName
 			player['buttonOrder'] = buttonOrder +1
