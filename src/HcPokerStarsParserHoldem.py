@@ -2,6 +2,7 @@ import re
 import HcConfig
 import HcPokerStarsConfig
 from HcLib.PokerTools import PtSeats
+from HcLib.PokerTools import PtCard
 
 #NOTES:
 #
@@ -254,7 +255,7 @@ class PokerStarsParserHoldemEN(HcConfig.LineParserBase):
 			m = self.PatternPlayerHoleCards.match(item['line'])
 			if m is not None:
 				d = m.groupdict()
-				d['cards'] = (d.pop('card1'), d.pop('card2'))
+				d['cards'] = (PtCard.Card(d.pop('card1')), PtCard.Card(d.pop('card2')))
 				handlers[item['lineno']] = (self.hand.handlePlayerHoleCards, d)
 				data.remove(item)
 				break
@@ -356,7 +357,11 @@ class PokerStarsParserHoldemEN(HcConfig.LineParserBase):
 			m = self.PatternFlop.match(item['line'])
 			if m is not None:
 				d = m.groupdict()
-				d['cards'] = (d.pop('card1'), d.pop('card2'), d.pop('card3'))
+				d['cards'] = (
+						PtCard.Card(d.pop('card1')), 
+						PtCard.Card(d.pop('card2')), 
+						PtCard.Card(d.pop('card3'))
+						)
 				handlers[item['lineno']] = (self.hand.handleFlop, d)
 				data.remove(item)
 				break
@@ -375,6 +380,7 @@ class PokerStarsParserHoldemEN(HcConfig.LineParserBase):
 			m = self.PatternTurn.match(item['line'])
 			if m is not None:
 				d = m.groupdict()
+				d['card'] = PtCard.Card(d['card'])
 				handlers[item['lineno']] = (self.hand.handleTurn, d)
 				data.remove(item)
 				break
@@ -393,6 +399,7 @@ class PokerStarsParserHoldemEN(HcConfig.LineParserBase):
 			m = self.PatternRiver.match(item['line'])
 			if m is not None:
 				d = m.groupdict()
+				d['card'] = PtCard.Card(d['card'])
 				handlers[item['lineno']] = (self.hand.handleRiver, d)
 				data.remove(item)
 				break
