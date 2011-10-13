@@ -1,3 +1,4 @@
+ # -*- coding: UTF-8 -*-
 
 import HcConfig
 
@@ -25,18 +26,24 @@ import HcConfig
 #************************************************************************************
 #
 #************************************************************************************
+CurrencySymbols = u'$€£'
+
 GameMapping = {
 		"Hold'em": HcConfig.GameHoldem,
 		}
 
 GameLimitMapping = {
-		"No Limit": HcConfig.GameLimitNoLimit,
+		"no limit": HcConfig.GameLimitNoLimit,
+		"pot limit": HcConfig.GameLimitPotLimit,
+		"fixed limit": HcConfig.GameLimitFixedLimit,
 		}
 
 CurrencyMapping = {
 		'': HcConfig.CurrencyNone,
-		'USD': HcConfig.CurrencyDollar,
-		'EUR': HcConfig.CurrencyEuro,
+		'$': HcConfig.CurrencyUSD,
+		u'€': HcConfig.CurrencyEUR,
+		u'£':  HcConfig.CurrencyGBP,
+		
 		}
 
 

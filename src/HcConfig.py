@@ -34,8 +34,9 @@ GameLimitPotLimit = 'PotLimit'
 GameLimitFixedLimit = 'FixedLimit'
 
 CurrencyNone = ''
-CurrencyDollar = 'USD'
-CurrencyEuro = 'EUR'
+CurrencyUSD = 'USD'
+CurrencyEUR = 'EUR'
+CurrencyGBP = 'GBP'
 
 #************************************************************************************
 # helper methods
@@ -61,6 +62,8 @@ class HandHoldem(object):
 			tourneyID='',
 			tourneyBuyIn=0.0,
 			tourneyRake=0.0,
+			tourneyBounty=0.0,
+			homeGameID='',
 			handID='',
 			game=GameNone, 
 			gameLimit=GameLimitNone, 
@@ -248,13 +251,6 @@ class LineParserMeta(type):
 	"""
 	def __new__(klass,  name, bases, kws):
 		newClass = type.__new__(klass,  name, bases, kws)
-		ParserMethodNames = []
-		for name in newClass.__dict__:
-			obj = getattr(newClass, name)
-			if getattr(obj, 'klass', None) is LineParserMethod:
-				ParserMethodNames.append((obj.priority, name))
-		ParserMethodNames.sort()
-		newClass.ParserMethodNames = [i[1] for i in ParserMethodNames]	
 		Parsers.append(newClass)
 		return newClass
 	
@@ -264,15 +260,13 @@ class LineParserBase(object):
 	decorate any methods intendet to take part in the parsing process as ParserMethod(). 
 	the	methods will be called with two arguments:
 	
-	data: (list) of dicts {lineno, line} of the hand history
-	events: a list containg len(data) None's that needs to be filled by the methods with events
-	
-	the parser iterates over all parse methods, feeding data and a list of handlers to the
-	next method in turn. each method should remove the lines it processed from the data
-	and place the handler and kws into the according slot(s) of the handler list. None members 
-	in this list will be ignored. if there is data left when iteration over methods is finished 
-	the parser will throw a ParseError().
-	
+	- to include methods in the parsing process decorate them as L{ParserMethod}
+	- each method will be passes two parameters: (data) a list of lines to be parsed and
+	  a list of events of len(lines) the method(s) will need to fill in with a tuple
+	  (methodCall, kws). None events will be ignored. the method should return
+	  True to continue parsing or False to flag an error. in case of an error make
+	  shure the line causing the error ist the first member of (data)
+		
 	usage: feed() data to the parser and iterate over the returned events.
 	"""
 	__metaclass__ = LineParserMeta
@@ -291,8 +285,28 @@ class LineParserBase(object):
 		
 	def __init__(self, hand):
 		self.hand = hand
-				
+		
+		# gather all parser methods
+		#TODO: maybe we can delay parser setup to optimize for speed?	
+		ParserMethodNames = []
+		for name in dir(self):
+			obj = getattr(self, name)
+			if getattr(obj, 'klass', None) is LineParserMethod:
+				ParserMethodNames.append((obj.priority, name))
+		ParserMethodNames.sort()
+		self.ParserMethodNames = [i[1] for i in ParserMethodNames]	
+					
+	def canParse(self, lines):
+		"""checks if the parser can parse the lines parsed
+		@return: (bool)
+		"""
+		return False
+		
+	
 	def feed(self, lines):
+		if not self.canParse(lines):
+			return None
+			
 		data = [{'lineno': lineno, 'line': line} for lineno, line in enumerate(lines)]
 		handlers = [None]*len(data)
 		for name in self.ParserMethodNames:
