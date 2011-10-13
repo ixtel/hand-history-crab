@@ -2,29 +2,7 @@ import re
 import HcConfig
 import HcPokerStarsConfig
 from HcLib.PokerTools import PtSeats
-from HcLib.PokerTools import PtCard
 
-#NOTES:
-#
-# PokerStars rake (thanks PokerStars nick): 
-# -----------------------------------------
-# pot total gives the rake to be taken, according to [http://www.pokerstars.com/poker/room/rake/].
-# rake is then taken from each pot (starting from  the main pot) when the threshold is hit.
-#
-# example - assume 1c for each 20c (threshold) in the pot:
-# mainPot = 14
-# sidePot1 = 20
-# sidePot2 = 66
-# total = 100
-# rake = 5
-#
-# * mainPot does not hit the threshold so 0c are taken (remainder 14c)
-# * the first 6c of sidePot1 hit the threshold of 20c so 1c is taken (remainder 14c)
-# * the first 6c of sidePot 2 hit the threshold so 1c is taken and there are 60c left
-#   in the pot that are raked with 3c.
-#
-# so mainPot is raked 0c, sidePot1 1c and sidePot2 4c.
-#
 #************************************************************************************
 # consts
 #************************************************************************************
@@ -255,7 +233,7 @@ class PokerStarsParserHoldemEN(HcConfig.LineParserBase):
 			m = self.PatternPlayerHoleCards.match(item['line'])
 			if m is not None:
 				d = m.groupdict()
-				d['cards'] = (PtCard.Card(d.pop('card1')), PtCard.Card(d.pop('card2')))
+				d['cards'] = (d.pop('card1'), d.pop('card2'))
 				handlers[item['lineno']] = (self.hand.handlePlayerHoleCards, d)
 				data.remove(item)
 				break
@@ -357,11 +335,7 @@ class PokerStarsParserHoldemEN(HcConfig.LineParserBase):
 			m = self.PatternFlop.match(item['line'])
 			if m is not None:
 				d = m.groupdict()
-				d['cards'] = (
-						PtCard.Card(d.pop('card1')), 
-						PtCard.Card(d.pop('card2')), 
-						PtCard.Card(d.pop('card3'))
-						)
+				d['cards'] = (d.pop('card1'), d.pop('card2'), d.pop('card3'))
 				handlers[item['lineno']] = (self.hand.handleFlop, d)
 				data.remove(item)
 				break
@@ -380,7 +354,6 @@ class PokerStarsParserHoldemEN(HcConfig.LineParserBase):
 			m = self.PatternTurn.match(item['line'])
 			if m is not None:
 				d = m.groupdict()
-				d['card'] = PtCard.Card(d['card'])
 				handlers[item['lineno']] = (self.hand.handleTurn, d)
 				data.remove(item)
 				break
@@ -399,7 +372,6 @@ class PokerStarsParserHoldemEN(HcConfig.LineParserBase):
 			m = self.PatternRiver.match(item['line'])
 			if m is not None:
 				d = m.groupdict()
-				d['card'] = PtCard.Card(d['card'])
 				handlers[item['lineno']] = (self.hand.handleRiver, d)
 				data.remove(item)
 				break
@@ -415,8 +387,97 @@ class PokerStarsParserHoldemEN(HcConfig.LineParserBase):
 				break
 	
 	
+	PatternPlayerShows = re.compile(
+		"""^(?P<name>.*?)\:\s shows\s 
+		\[
+			(?P<card1>[23456789TJQKA][cdhs])\s 
+			(?P<card2>[23456789TJQKA][cdhs])
+		\]\s
+		\(.+\)\s*$
+		""", re.X|re.I
+		)
+	@HcConfig.LineParserMethod(priority=160)
+	def parsePlayerShows(self, data, handlers):
+		items = []
+		for item in data:
+			m = self.PatternPlayerShows.match(item['line'])
+			if m is not None:
+				items.append(item)
+				d = m.groupdict()
+				d['cards'] = (d.pop('card1'), d.pop('card2'))
+				handlers[item['lineno']] = (self.hand.handlePlayerShows, d)
+		for item in items:
+			data.remove(item)
 	
+		
+	PatternPlayerMucks = re.compile(
+		"^(?P<name>.*?)\:\s mucks\s hand\s*$", re.X|re.I
+		)
+	PatternPlayerMucked = re.compile(
+		"""^Seat\s [\d]+\:\s (?P<name>.+?)\s (\((small\sblind|big\sblind|button)\)\s)? 
+			mucked\s \[(?P<card1>[23456789TJQKA][cdhs])\s(?P<card2>[23456789TJQKA][cdhs])\]
+		\s*$
+		""", re.X|re.I
+		)
+	@HcConfig.LineParserMethod(priority=160)
+	def parsePlayerMucks(self, data, handlers):
+		items = []
+		players = {}
+		for item in data:
+			m = self.PatternPlayerMucks.match(item['line'])
+			if m is not None:
+				items.append(item)
+				d = m.groupdict()
+				d['cards'] = None
+				players[d['name']] = (d, item['lineno'])
+		for item in items:
+			data.remove(item)
+			
+		# try to find hole cards player mucked
+		items = []
+		for item in data:
+			m = self.PatternPlayerMucked.match(item['line'])
+			if m is not None:
+				items.append(item)
+				d = m.groupdict()
+				players[d['name']][0]['cards'] = (d.pop('card1'), d.pop('card2'))
+		for item in items:
+			data.remove(item)
+			
+		for name, (d, lineno) in players.items():
+			handlers[item['lineno']] = (self.hand.handlePlayerMucks, d)	
+		
+		
+	PatternPlayerCollected = re.compile(
+		"^(?P<name>.*?)\s collected\s [^\d\.]?(?P<amount>[\d\.]+)\s from\s pot \s*$", re.X|re.I
+		)
+	@HcConfig.LineParserMethod(priority=400)
+	def parsePlayerWins(self, data, handlers):
+		items = []
+		for item in data:
+			m = self.PatternPlayerCollected.match(item['line'])
+			if m is not None:
+				items.append(item)
+				d = m.groupdict()
+				d['amount'] = self.stringToFloat(d['amount'])
+				handlers[item['lineno']] = (self.hand.handlePlayerWins, d)
+		for item in items:
+			data.remove(item)
+				
+	# clean up handlers
+		
+	PatternSummary = re.compile("""^^\*\*\*\sSUMMARY\s\*\*\*\s*$""")				
+	@HcConfig.LineParserMethod(priority=9998)
+	def parseSummary(self, data, handlers):
+		for i, item in enumerate(data):
+			m = self.PatternSummary.match(item['line'])
+			if m is not None:
+				# drop summary, we don't need it
+				while i < len(data):
+					data.pop(i)
+				break	
 	
+		
 	PatternEmptyLine = re.compile('^\s*$')
 	@HcConfig.LineParserMethod(priority=9999)
 	def parseEmptyLines(self, data, handlers):
