@@ -36,10 +36,6 @@ GameLimitFixedLimit = 'FixedLimit'
 CurrencyNone = ''
 CurrencyDollar = 'USD'
 
-PotTypeUnclaimed = 'Unclaimed'
-PotTypeTied = 'Tied'
-PotTypeWon = 'Won'
-
 #************************************************************************************
 # helper methods
 #************************************************************************************
@@ -151,7 +147,26 @@ class HandHoldem(object):
 		@param name: (str) player name
 		@param amount: (float) amount called
 		"""
+		
+	def handlePlayerShows(self, name='', cards=None):
+		"""
+		@param name: (str) player name
+		@param cards:
+		"""
 	
+	def handlePlayerMucks(self, name='', cards=None):
+		"""
+		@param name: (str) player name
+		@param cards: (tuple) cards the player mucks or None
+		"""
+		
+	def handlePlayerWins(self, name='', amount=0.0):
+		"""
+		@param name: (str) player name
+		@param amount: (float) amount called
+		"""
+		
+		
 
 class HandHoldemDebug(HandHoldem):
 		
