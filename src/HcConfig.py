@@ -35,6 +35,7 @@ GameLimitFixedLimit = 'FixedLimit'
 
 CurrencyNone = ''
 CurrencyDollar = 'USD'
+CurrencyEuro = 'EUR'
 
 #************************************************************************************
 # helper methods
@@ -58,6 +59,8 @@ class HandHoldem(object):
 			lines=None, 
 			site=SiteNone, 
 			tourneyID='',
+			tourneyBuyIn=0.0,
+			tourneyRake=0.0,
 			handID='',
 			game=GameNone, 
 			gameLimit=GameLimitNone, 
@@ -99,6 +102,21 @@ class HandHoldem(object):
 		@param name: (str) player name
 		@param amount: (float) amount posted
 		"""
+	
+	def handlePlayerPostsAnte(self, name='', amount=0.0):
+		"""
+		@param name: (str) player name
+		@param amount: (float) amount posted
+		"""
+	
+	
+	def handlePlayerPostsBuyIn(self, name='', amount=0.0):
+		"""
+		@param name: (str) player name
+		@param amount: (float)
+			
+		"""
+	
 	
 	def handlePreflop(self):
 		""""""
@@ -147,7 +165,14 @@ class HandHoldem(object):
 		@param name: (str) player name
 		@param amount: (float) amount called
 		"""
-		
+	
+	def handlePlayerChats(self, name='', text=''):
+		"""
+		@param name: (str) player name
+		@param text: 
+		"""	
+	
+	
 	def handlePlayerShows(self, name='', cards=None):
 		"""
 		@param name: (str) player name
@@ -160,12 +185,18 @@ class HandHoldem(object):
 		@param cards: (tuple) cards the player mucks or None
 		"""
 		
-	def handlePlayerWins(self, name='', amount=0.0):
+	def handlePlayerWins(self, name='', amount=0.0, potNo=0):
 		"""
 		@param name: (str) player name
 		@param amount: (float) amount called
+		@param potNo: (int) 0 for main pot, 1 for side pot1 (..)
 		"""
-		
+	
+	def handleUncalledBet(self, name='', amount=0.0):
+		"""
+		@param name: (str) player name
+		@param amount: (float) amount called
+		"""	
 		
 
 class HandHoldemDebug(HandHoldem):
@@ -181,7 +212,8 @@ class HandHoldemDebug(HandHoldem):
 				self.func = func
 		def __call__(self, *args, **kws):
 			print self.name[6:], kws
-		
+			self.func(**kws)
+				
 	def __getattribute__(self, name):
 		obj = object.__getattribute__(self, name)
 		return object.__getattribute__(self,'FuncWrapper').fromObject(name, obj)
@@ -266,7 +298,8 @@ class LineParserBase(object):
 		for name in self.ParserMethodNames:
 			if not data:
 				break		
-			getattr(self, name)(data, handlers)
+			if not getattr(self, name)(data, handlers):
+				break
 		if data:
 			err = 'could not parse hand (lineno %s)\n' % data[0]['lineno']
 			err += 'line: %s\n' % data[0]['line']
@@ -278,8 +311,9 @@ class LineParserBase(object):
 			if item is not None:
 				item[0](**item[1])
 		return self.hand
-	
 		
+		
+			
 	
 	
 

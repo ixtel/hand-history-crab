@@ -11,11 +11,11 @@ class PokerStarsHandHistoryFile(object):
 		return lines.split('\n')
 		
 	@classmethod
-	def fromFile(klass, filePath):
+	def fromFileName(klass, fileName):
 		# stars seems to have switched to utf-8 at some time. more or less a guess
 		# that it used to be iso-8859-1 before.
 		data = None
-		fp = codecs.open(filePath, encoding='utf-8')
+		fp = codecs.open(fileName, encoding='utf-8')
 		try:
 			data = fp.read()
 			#NOTE: remove BOM if present
@@ -25,7 +25,7 @@ class PokerStarsHandHistoryFile(object):
 		finally:
 			fp.close()
 		if data is None:
-			fp = codecs.open(filePath, encoding='iso-8859-1')
+			fp = codecs.open(fileName, encoding='iso-8859-1')
 			try:
 				data = fp.read()
 			finally:
