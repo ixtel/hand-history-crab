@@ -34,5 +34,10 @@ GameLimitMapping = {
 		}
 
 CurrencyMapping = {
+		'': HcConfig.CurrencyNone,
 		'USD': HcConfig.CurrencyDollar,
+		'EUR': HcConfig.CurrencyEuro,
 		}
+
+
+
