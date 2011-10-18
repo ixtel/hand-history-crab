@@ -11,6 +11,11 @@ TimeZoneNone = ''
 TimeZoneET = 'ET'
 
 
+DataTypeNone = {}
+DataTypeHand = 'Hand'
+
+VersionNone = ''
+
 SiteNone = ''
 SitePokerStars = 'PokerStars'
 
@@ -27,6 +32,10 @@ StreetShowDown = 'ShowDown'
 
 GameNone = ''
 GameHoldem = 'Holdem'
+
+GameContextNone = ''
+GameContextCashGame = 'CashGame'
+GameContextTourney = 'Tourney'
 
 GameLimitNone = ''
 GameLimitNoLimit = 'NoLimit'
@@ -50,12 +59,32 @@ def timestampFromDate(timeZone, year, month, day, hour, minute, second):
 		raise ValueError('timeZone "%s" not implemented' % timeZone)
 	return t
 
+#************************************************************************************
+# base objects
+#************************************************************************************
+class HcObjectBase(object):
+	Metadata = {}
+
+
+class ParserHandlerBase(HcObjectBase):
+	
+	def handleParseStart(self, data, handled):
+		pass
+		
+	def handleParseEnd(self, data, handled):
+		pass
 
 #************************************************************************************
 # hand types
 #************************************************************************************
-class HandHoldem(object):
+class HandHoldem(ParserHandlerBase):
 	
+	Metadata = {
+		'dataType': DataTypeHand, 
+		'game': GameHoldem,
+		}
+	
+		
 	def handleHandStart(self, 
 			lines=None, 
 			site=SiteNone, 
@@ -215,7 +244,7 @@ class HandHoldemDebug(HandHoldem):
 				self.func = func
 		def __call__(self, *args, **kws):
 			print self.name[6:], kws
-			self.func(**kws)
+			self.func(*args, **kws)
 				
 	def __getattribute__(self, name):
 		obj = object.__getattribute__(self, name)
@@ -251,11 +280,12 @@ class LineParserMeta(type):
 	"""
 	def __new__(klass,  name, bases, kws):
 		newClass = type.__new__(klass,  name, bases, kws)
-		Parsers.append(newClass)
+		if newClass.Metadata:
+			Parsers.append(newClass)
 		return newClass
 	
 
-class LineParserBase(object):
+class LineParserBase(HcObjectBase):
 	"""base class for linewise parsers
 	decorate any methods intendet to take part in the parsing process as ParserMethod(). 
 	the	methods will be called with two arguments:
@@ -272,17 +302,8 @@ class LineParserBase(object):
 	__metaclass__ = LineParserMeta
 	
 	ParserMethodNames = []
-	Site = SiteNone
-	Game = GameNone
-	Language = LanguageNone
+	Metadata = {}
 	
-	@classmethod
-	def site(klass): return klass.Site
-	@classmethod
-	def game(klass): return klass.Game
-	@classmethod
-	def language(klass): return klass.Language
-		
 	def __init__(self):
 		# gather all parser methods
 		#TODO: maybe we can delay parser setup to optimize for speed?	
@@ -292,8 +313,8 @@ class LineParserBase(object):
 			if getattr(obj, 'klass', None) is LineParserMethod:
 				ParserMethodNames.append((obj.priority, name))
 		ParserMethodNames.sort()
-		self.ParserMethodNames = [i[1] for i in ParserMethodNames]	
-					
+		self.ParserMethodNames = [i[1] for i in ParserMethodNames]
+							
 	def canParse(self, lines):
 		"""checks if the parser can parse the lines parsed
 		@return: (bool)
@@ -307,6 +328,7 @@ class LineParserBase(object):
 				
 		data = [{'lineno': lineno, 'line': line} for lineno, line in enumerate(lines)]
 		handled = [None]*len(data)
+		handler.handleParseStart(data, handled)
 		for name in self.ParserMethodNames:
 			if not data:
 				break		
@@ -322,6 +344,7 @@ class LineParserBase(object):
 		for item in handled:
 			if item is not None:
 				item[0](**item[1])
+		handler.handleParseEnd(data, handled)
 		return handler
 		
 		
