@@ -18,10 +18,14 @@ from HcLib.PokerTools import PtSeats
 #************************************************************************************
 class PokerStarsParserHoldemENCashGame1(HcConfig.LineParserBase):
 	
-	Site = HcConfig.SitePokerStars
-	Game = HcConfig.GameHoldem
-	Language = HcConfig.LanguageEN
-		
+	Metadata = {
+			'dataType': HcConfig.DataTypeHand, 
+			'game': HcConfig.GameHoldem,
+			'gameContext': HcConfig.GameContextCashGame,
+			'site': HcConfig.SitePokerStars,
+			'version': '1',
+			} 
+			
 	def __init__(self, *args, **kws):
 		HcConfig.LineParserBase.__init__(self, *args, **kws)
 		self._seatNoButton = 0
@@ -94,7 +98,7 @@ class PokerStarsParserHoldemENCashGame1(HcConfig.LineParserBase):
 		d.update(m.groupdict())
 		
 		self._seatNoButton = int(d.pop('seatNoButton'))
-		d['site'] = self.site()
+		d['site'] = self.Metadata['site']
 		d['game'] = HcPokerStarsConfig.GameMapping[d['game']]
 		d['gameLimit'] = HcPokerStarsConfig.GameLimitMapping[d['gameLimit'].lower()]
 		#NOTE: stars added currency to header at some point, but this is pretty useless
@@ -794,8 +798,16 @@ class PokerStarsParserHoldemENCashGame1(HcConfig.LineParserBase):
 #
 #************************************************************************************
 # older header - no local date/time in header
-class PokerStarsParserHoldemENCashGame2(PokerStarsParserHoldemENCashGame1):
+class PokerStarsParserHoldemENCashGame0(PokerStarsParserHoldemENCashGame1):
 	
+	Metadata = {
+			'dataType': HcConfig.DataTypeHand, 
+			'game': HcConfig.GameHoldem,
+			'gameContext': HcConfig.GameContextCashGame,
+			'site': HcConfig.SitePokerStars,
+			'version': '0',
+			} 
+		
 	def canParse(self, lines):
 		header = lines[0]
 		if " Hold'em " in header:
@@ -831,6 +843,14 @@ class PokerStarsParserHoldemENCashGame2(PokerStarsParserHoldemENCashGame1):
 #************************************************************************************
 #TODO: FPP tourneys
 class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENCashGame1):
+	
+	Metadata = {
+			'dataType': HcConfig.DataTypeHand, 
+			'game': HcConfig.GameHoldem,
+			'gameContext': HcConfig.GameContextTourney,
+			'site': HcConfig.SitePokerStars,
+			'version': '1',
+			}
 	
 	def canParse(self, lines):
 		header = lines[0]
@@ -966,7 +986,15 @@ class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENCashGame1):
 			data.remove(item)
 		return True
 
-class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENTourney1):
+class PokerStarsParserHoldemENTourney0(PokerStarsParserHoldemENTourney1):
+	
+	Metadata = {
+			'dataType': HcConfig.DataTypeHand, 
+			'game': HcConfig.GameHoldem,
+			'gameContext': HcConfig.GameContextTourney,
+			'site': HcConfig.SitePokerStars,
+			'version': '0',
+			}
 	
 	def canParse(self, lines):
 		header = lines[0]
@@ -1016,19 +1044,17 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENTourney1):
 	
 
 if __name__ == '__main__':
-	import cProfile as profile	
+	
 	from oo1 import hh
 	hh = hh.split('\n')
-	#p = PokerStarsParserHoldemENCashGame2(hand=HcConfig.HandHoldemDebug())
 	p = PokerStarsParserHoldemENTourney1()
 	handler = HcConfig.HandHoldemDebug()
 	hand = p.feed(hh, handler)
-	print hand
-
+	
+	import cProfile as profile	
 	def test():
 		for i in xrange(20000):
-			hand = p.feed(hh)
-			
+			hand = p.feed(hh, handler)
 	##profile.run('test()')
 
 	
