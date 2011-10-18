@@ -64,6 +64,14 @@ def timestampFromDate(timeZone, year, month, day, hour, minute, second):
 #************************************************************************************
 class HcObjectBase(object):
 	Metadata = {}
+	
+	@classmethod
+	def metadataContains(klass, **kws):
+		for name, value in kws.items():
+			if name in klass.Metadata:
+				if klass.Metadata[name] != value:
+					return False
+		return True
 
 
 class ParserHandlerBase(HcObjectBase):
