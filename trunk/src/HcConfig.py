@@ -283,9 +283,7 @@ class LineParserBase(object):
 	@classmethod
 	def language(klass): return klass.Language
 		
-	def __init__(self, hand):
-		self.hand = hand
-		
+	def __init__(self):
 		# gather all parser methods
 		#TODO: maybe we can delay parser setup to optimize for speed?	
 		ParserMethodNames = []
@@ -303,16 +301,16 @@ class LineParserBase(object):
 		return False
 		
 	
-	def feed(self, lines):
+	def feed(self, lines, handler):
 		if not self.canParse(lines):
 			return None
-			
+				
 		data = [{'lineno': lineno, 'line': line} for lineno, line in enumerate(lines)]
-		handlers = [None]*len(data)
+		handled = [None]*len(data)
 		for name in self.ParserMethodNames:
 			if not data:
 				break		
-			if not getattr(self, name)(data, handlers):
+			if not getattr(self, name)(data, handler, handled):
 				break
 		if data:
 			err = 'could not parse hand (lineno %s)\n' % data[0]['lineno']
@@ -321,10 +319,10 @@ class LineParserBase(object):
 			err += '\n'.join(lines)
 			raise ParseError(err, data[0]['lineno'])	
 		
-		for item in handlers:
+		for item in handled:
 			if item is not None:
 				item[0](**item[1])
-		return self.hand
+		return handler
 		
 		
 			
