@@ -16,7 +16,7 @@ from HcLib.PokerTools import PtSeats
 #************************************************************************************
 # parser implementation
 #************************************************************************************
-class PokerStarsParserHoldemENCashGame1(HcConfig.LineParserBase):
+class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
 	Metadata = {
 			'dataType': HcConfig.DataTypeHand, 
@@ -31,12 +31,7 @@ class PokerStarsParserHoldemENCashGame1(HcConfig.LineParserBase):
 		self._seatNoButton = 0
 		
 	def canParse(self, lines):
-		header = lines[0]
-		if " Hold'em " in header:
-			if not " Tournament " in header:
-				if '[' in header:
-					return True
-		return False
+		return HcPokerStarsConfig.gameHeaderType(lines[0]) == HcPokerStarsConfig.GameHeaderTypeHoldemCashGame2
 			
 	def feed(self, *args, **kws):
 		self._seatNoButton = 0
@@ -798,7 +793,7 @@ class PokerStarsParserHoldemENCashGame1(HcConfig.LineParserBase):
 #
 #************************************************************************************
 # older header - no local date/time in header
-class PokerStarsParserHoldemENCashGame0(PokerStarsParserHoldemENCashGame1):
+class PokerStarsParserHoldemENCashGame1(PokerStarsParserHoldemENCashGame2):
 	
 	Metadata = {
 			'dataType': HcConfig.DataTypeHand, 
@@ -809,12 +804,7 @@ class PokerStarsParserHoldemENCashGame0(PokerStarsParserHoldemENCashGame1):
 			} 
 		
 	def canParse(self, lines):
-		header = lines[0]
-		if " Hold'em " in header:
-			if not " Tournament " in header:
-				if '[' not in header:
-					return True
-		return False
+		return HcPokerStarsConfig.gameHeaderType(lines[0]) == HcPokerStarsConfig.GameHeaderTypeHoldemCashGame1
 	
 	# PokerStars Game #0123456789:  Hold'em No Limit ($0.00/$0.00) - 0000/00/00 00:00:00 TZ
 	PatternGameHeader = re.compile(
@@ -841,8 +831,7 @@ class PokerStarsParserHoldemENCashGame0(PokerStarsParserHoldemENCashGame1):
 #************************************************************************************
 #
 #************************************************************************************
-#TODO: FPP tourneys
-class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENCashGame1):
+class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 	
 	Metadata = {
 			'dataType': HcConfig.DataTypeHand, 
@@ -853,14 +842,7 @@ class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENCashGame1):
 			}
 	
 	def canParse(self, lines):
-		header = lines[0]
-		if " Hold'em " in header:
-			if " Tournament " in header:
-				if 'FPP ' not in header:
-					if '[' in header:
-						return True
-		return False
-	
+		return HcPokerStarsConfig.gameHeaderType(lines[0]) == HcPokerStarsConfig.GameHeaderTypeHoldemTourney2
 	
 	
 	#PokerStars Game #0123456789: Tournament #0123456789, 0000+000 Hold'em No Limit - Level I (10/20) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
@@ -986,7 +968,7 @@ class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENCashGame1):
 			data.remove(item)
 		return True
 
-class PokerStarsParserHoldemENTourney0(PokerStarsParserHoldemENTourney1):
+class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENTourney2):
 	
 	Metadata = {
 			'dataType': HcConfig.DataTypeHand, 
@@ -997,13 +979,7 @@ class PokerStarsParserHoldemENTourney0(PokerStarsParserHoldemENTourney1):
 			}
 	
 	def canParse(self, lines):
-		header = lines[0]
-		if " Hold'em " in header:
-			if " Tournament " in header:
-				if 'FPP ' not in header:
-					if '[' not in header:
-						return True
-		return False
+		return HcPokerStarsConfig.gameHeaderType(lines[0]) == HcPokerStarsConfig.GameHeaderTypeHoldemTourney1
 	
 	# PokerStars Game #0123456789: Tournament #0123456789, $0.00+$0.00 Hold'em No Limit - Level I (10/20) - 0000/00/00 00:00:00 ET
 	PatternGameHeader = re.compile(

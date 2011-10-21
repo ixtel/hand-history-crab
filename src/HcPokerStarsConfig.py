@@ -46,5 +46,28 @@ CurrencyMapping = {
 		
 		}
 
-
+#TODO: we have to tell all* game types apart here including 
+# HORSE, HOSE, FPP torneys and whatevs
+GameHeadertypeUnknown = 0
+GameHeaderTypeHoldemCashGame1 = 1	# without local time
+GameHeaderTypeHoldemCashGame2 = 2	# with local time
+GameHeaderTypeHoldemTourney1 = 1	# without local time
+GameHeaderTypeHoldemTourney2 = 2	# with local time
+def gameHeaderType(gameHeader):
+	if " Hold'em " in gameHeader:
+		if " Tournament " in gameHeader:
+			if '[' in gameHeader:
+				return GameHeaderTypeHoldemTourney2
+			else:
+				return GameHeaderTypeHoldemTourney1
+		else:
+			if '[' in gameHeader:
+				return GameHeaderTypeCashGame2
+			else:
+				return GameHeaderTypeCashGame1
+					
+	return GameHeadertypeUnknown
+		
+	
+	
 
