@@ -1,15 +1,12 @@
 
 import codecs
+import HcConfig
+import HcPokerStarsParserHoldem
 #************************************************************************************
 #
 #************************************************************************************
 class PokerStarsHandHistoryFile(object):
 
-	@classmethod
-	def splitLines(klass, data):
-		lines = data.replace('\r', '\n').replace('\n\n', '\n')
-		return lines.split('\n')
-		
 	@classmethod
 	def fromFileName(klass, fileName):
 		# stars seems to have switched to utf-8 at some time. more or less a guess
@@ -30,12 +27,12 @@ class PokerStarsHandHistoryFile(object):
 				data = fp.read()
 			finally:
 				fp.close()
-		lines = klass.splitLines(data)
+		lines = HcConfig.linesFromString(data)
 		return klass(lines)
 		
 	@classmethod	
 	def fromString(klass, data):
-		lines = klass.splitLines(data)
+		lines = HcConfig.linesFromString(data)
 		return klass(lines)	
 		
 	def __init__(self, lines):
@@ -47,13 +44,13 @@ class PokerStarsHandHistoryFile(object):
 	def _parse(self):
 		handHistory = None
 		for line in self._lines:
-			line = line.strip()
-			if self.lineIsGameHeader(line):
+			chars = line['chars'].strip()
+			if self.lineIsGameHeader(chars):
 				handHistory = [line, ]
 				continue
-			elif handHistory and line:
+			elif handHistory and chars:
 				handHistory.append(line)
-			elif handHistory and not line:
+			elif handHistory and not chars:
 				self._handHistories.append(handHistory)
 				handHistory = None
 		if handHistory:
