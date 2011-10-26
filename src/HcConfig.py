@@ -50,51 +50,70 @@ CurrencyGBP = 'GBP'
 #************************************************************************************
 # helper methods
 #************************************************************************************
-def timestampFromDate(timeZone, year, month, day, hour, minute, second):
+def timeFromDate(date, timeZone=TimeZoneET):
 	"""converts a date to a timestamp"""
-	t = calendar.timegm((int(year), int(month), int(day), int(hour), int(minute), int(second)))
+	t = calendar.timegm(date)
 	if timeZone == TimeZoneET:
 		t += 18000	# ET + 5 hours == UTC
 	else:
 		raise ValueError('timeZone "%s" not implemented' % timeZone)
 	return t
 
+def linesFromString(string):
+	return [
+		{'lineno': lineno, 'chars': line} for 
+		lineno, line in 
+		enumerate(string.replace('\r\n', '\n').replace('\r','\n').split('\n'))
+		]
+
+def linesToString(lines,lineFeed=LineFeed):
+	return lineFeed.join([line['chars'] for line in lines])
+	
 #************************************************************************************
 # base objects
 #************************************************************************************
-class HcObjectBase(object):
-	Metadata = {}
-	
-	@classmethod
-	def metadataContains(klass, **kws):
+class HcID(object):
+	def __init__(self, **kws):
+		self._kwList = tuple(kws.items())
+		self._kws = kws
+	def contains(self, **kws):
 		for name, value in kws.items():
-			if name in klass.Metadata:
-				if klass.Metadata[name] != value:
-					return False
+			if name not in self._kws:
+				return False
+			if self._kws[name] != value:
+				return False
 		return True
-
-
-class ParserHandlerBase(HcObjectBase):
+	def __eq__(self, other): return self._kwList == other._kwList
+	def __ne__(self, other): return not self.__eq__(other)
+	def __hash__(self): return hash(self._kwList)
+	def __nonzero__(self): return bool(self._kws)
+	def __getitem__(self, name):	return self._kws[name]
 	
-	def handleParseStart(self, data, handled):
+
+class HcObjectBase(object):
+	ID = HcID()
+	
+
+class EventHandlerBase(HcObjectBase):
+	
+	def handleParseStart(self, lines):
 		pass
 		
-	def handleParseEnd(self, data, handled):
+	def handleParseEnd(self, events):
 		pass
 
 #************************************************************************************
 # hand types
 #************************************************************************************
-class HandHoldem(ParserHandlerBase):
+class HandHoldem(EventHandlerBase):
 	
-	Metadata = {
-		'dataType': DataTypeHand, 
-		'game': GameHoldem,
-		}
+	ID = HcID(
+		dataType=DataTypeHand, 
+		game=GameHoldem,
+		)
 	
 		
 	def handleHandStart(self, 
-			lines=None, 
 			site=SiteNone, 
 			tourneyID='',
 			tourneyBuyIn=0.0,
@@ -104,7 +123,7 @@ class HandHoldem(ParserHandlerBase):
 			handID='',
 			game=GameNone, 
 			gameLimit=GameLimitNone, 
-			timestamp=TimeNone,
+			time=TimeNone,
 			tableName='',
 			maxPlayers=0,
 			currency=CurrencyNone,
@@ -148,16 +167,13 @@ class HandHoldem(ParserHandlerBase):
 		@param name: (str) player name
 		@param amount: (float) amount posted
 		"""
-	
-	
+		
 	def handlePlayerPostsBuyIn(self, name='', amount=0.0):
 		"""
 		@param name: (str) player name
 		@param amount: (float)
-			
 		"""
-	
-	
+		
 	def handlePreflop(self):
 		""""""
 		
@@ -211,8 +227,7 @@ class HandHoldem(ParserHandlerBase):
 		@param name: (str) player name
 		@param text: 
 		"""	
-	
-	
+		
 	def handlePlayerShows(self, name='', cards=None):
 		"""
 		@param name: (str) player name
@@ -261,7 +276,7 @@ class HandHoldemDebug(HandHoldem):
 #************************************************************************************
 # parser base functionality
 #************************************************************************************
-Parsers = []	# list containing all parsers
+Parsers = {}	# HcID --> Parser
 
 
 class ParseError(Exception):
@@ -288,29 +303,27 @@ class LineParserMeta(type):
 	"""
 	def __new__(klass,  name, bases, kws):
 		newClass = type.__new__(klass,  name, bases, kws)
-		if newClass.Metadata:
-			Parsers.append(newClass)
+		if newClass.ID:
+			Parsers[newClass.ID] = newClass
 		return newClass
 	
 
 class LineParserBase(HcObjectBase):
-	"""base class for linewise parsers
-	decorate any methods intendet to take part in the parsing process as ParserMethod(). 
-	the	methods will be called with two arguments:
+	"""base class for line parsers
+	decorate any methods intendet to take part in the parsing process as LineParserMethod(). 
+	the	methods will be called with three arguments:
 	
-	- to include methods in the parsing process decorate them as L{ParserMethod}
-	- each method will be passes two parameters: (data) a list of lines to be parsed and
-	  a list of events of len(lines) the method(s) will need to fill in with a tuple
-	  (methodCall, kws). None events will be ignored. the method should return
-	  True to continue parsing or False to flag an error. in case of an error make
-	  shure the line causing the error ist the first member of (data)
-		
-	usage: feed() data to the parser and iterate over the returned events.
+	lines: a list of lines to be parsed
+	eventHandler: user passed class to handle events
+	events: a list of len(lines) to assign events to.
+	
+	return: False to flag an error, True to continue parsing
+	
 	"""
 	__metaclass__ = LineParserMeta
 	
 	ParserMethodNames = []
-	Metadata = {}
+	ID = HcID()
 	
 	def __init__(self):
 		# gather all parser methods
@@ -330,34 +343,34 @@ class LineParserBase(HcObjectBase):
 		return False
 		
 	
-	def feed(self, lines, handler):
+	def feed(self, lines, eventHandler):
 		if not self.canParse(lines):
 			return None
 				
-		data = [{'lineno': lineno, 'line': line} for lineno, line in enumerate(lines)]
-		handled = [None]*len(data)
-		handler.handleParseStart(data, handled)
+		myLines = [{'lineno': line['lineno'], 'chars': line['chars'], 'index': index} for index, line in enumerate(lines)]
+		events = [None]*len(lines)
+		eventHandler.handleParseStart(myLines)
 		for name in self.ParserMethodNames:
-			if not data:
+			if not myLines:
 				break		
-			if not getattr(self, name)(data, handler, handled):
+			if not getattr(self, name)(myLines, eventHandler, events):
 				break
-		if data:
-			err = 'could not parse hand (lineno %s)\n' % data[0]['lineno']
-			err += 'line: %s\n' % data[0]['line']
+		if myLines:
+			err = 'could not parse hand (lineno %s)\n' % myLines[0]['lineno']
+			err += 'line: %s\n' % myLines[0]['chars']
 			err += '\n'
-			err += '\n'.join(lines)
-			raise ParseError(err, data[0]['lineno'])	
+			err += linesToString(lines)
+			raise ParseError(err, myLines[0]['lineno'])	
 		
-		for item in handled:
-			if item is not None:
-				item[0](**item[1])
-		handler.handleParseEnd(data, handled)
-		return handler
+		for event in events:
+			if event is not None:
+				event[0](**event[1])
+		eventHandler.handleParseEnd(events)
+		return eventHandler
 		
 		
 			
+
 	
 	
-
-
+	

@@ -9,7 +9,7 @@ from HcLib.PokerTools import PtSeats
 #TODO: stars did introduced currency a while ago. what to do with older hands?
 #TODO:stars does not show ante in game header
 #TODO: seen player buying in posting 1) BB 2) SB 3) BB + SB have to check this
-#      and add a handler to Hand() ..something like handlePlayerBuysIn(). 
+#      and add a eventHandler to Hand() ..something like handlePlayerBuysIn(). 
 #TODO: HORSE and other mixed games
 #TODO: how to oragnize parser versions?
 
@@ -18,20 +18,21 @@ from HcLib.PokerTools import PtSeats
 #************************************************************************************
 class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
-	Metadata = {
-			'dataType': HcConfig.DataTypeHand, 
-			'game': HcConfig.GameHoldem,
-			'gameContext': HcConfig.GameContextCashGame,
-			'site': HcConfig.SitePokerStars,
-			'version': '1',
-			} 
+	ID = HcConfig.HcID(
+			dataType=HcConfig.DataTypeHand, 
+			language=HcConfig.LanguageEN,
+			game=HcConfig.GameHoldem,
+			gameContext=HcConfig.GameContextCashGame,
+			site=HcConfig.SitePokerStars,
+			version='2',
+			)
 			
 	def __init__(self, *args, **kws):
 		HcConfig.LineParserBase.__init__(self, *args, **kws)
 		self._seatNoButton = 0
 		
 	def canParse(self, lines):
-		return HcPokerStarsConfig.gameHeaderType(lines[0]) == HcPokerStarsConfig.GameHeaderTypeHoldemCashGame2
+		return HcPokerStarsConfig.gameHeaderType(lines[0]['chars']) == HcPokerStarsConfig.GameHeaderTypeHoldemCashGame2
 			
 	def feed(self, *args, **kws):
 		self._seatNoButton = 0
@@ -77,28 +78,28 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		)
 	
 	@HcConfig.LineParserMethod(priority=1)
-	def parseGameHeader(self, data, handler, handled):
-		if len(data) < 2:
+	def parseGameHeader(self, lines, eventHandler, events):
+		if len(lines) < 2:
 			return False
 		
 		
-		m = self.PatternGameHeader.match(data[0]['line'])
+		m = self.PatternGameHeader.match(lines[0]['chars'])
 		if m is None:
 			return False
 		d = m.groupdict()
-		m = self.PatternTableHeader.match(data[1]['line'])
+		m = self.PatternTableHeader.match(lines[1]['chars'])
 		if m is None:
-			data.pop(0)
+			lines.pop(0)
 			return False
 		d.update(m.groupdict())
 		
 		self._seatNoButton = int(d.pop('seatNoButton'))
-		d['site'] = self.Metadata['site']
+		d['site'] = self.ID['site']
 		d['game'] = HcPokerStarsConfig.GameMapping[d['game']]
 		d['gameLimit'] = HcPokerStarsConfig.GameLimitMapping[d['gameLimit'].lower()]
 		#NOTE: stars added currency to header at some point, but this is pretty useless
 		# for parsing old hand histories, so we parse currency symbols directly
-		line = data[0]['line']
+		line = lines[0]['chars']
 		currency = HcPokerStarsConfig.CurrencyMapping['']
 		for symbol in HcPokerStarsConfig.CurrencySymbols:
 			if symbol in line:
@@ -108,19 +109,19 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		d['bigBlind'] = self.stringToFloat(d['bigBlind'])
 		d['smallBlind'] = self.stringToFloat(d['smallBlind'])
 		d['maxPlayers'] = int(d['maxPlayers'])
-		d['timestamp'] = HcConfig.timestampFromDate(
-								HcConfig.TimeZoneET,
-								d.pop('year'), 
-								d.pop('month'), 
-								d.pop('day'), 
-								d.pop('hour'), 
-								d.pop('minute'), 
-								d.pop('second'), 
+		d['time'] = HcConfig.timeFromDate(
+								(int(d.pop('year')), 
+								int(d.pop('month')), 
+								int(d.pop('day')), 
+								int(d.pop('hour')), 
+								int(d.pop('minute')), 
+								int(d.pop('second'))),
+								timeZone=HcConfig.TimeZoneET, 
 								)
 		
-		data.pop(0)
-		data.pop(0)
-		handled[0] = (handler.handleHandStart, d)
+		lines.pop(0)
+		lines.pop(0)
+		events[0] = (eventHandler.handleHandStart, d)
 		return True
 	
 	
@@ -139,7 +140,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=10)
-	def parsePlayer(self, data, handler, handled):
+	def parsePlayer(self, lines, eventHandler, events):
 		
 		# cash game: stars does not report a player sitting out initially (seatNo, stackSize)
 		# so we have to check for players sitting out that are not seated.
@@ -152,24 +153,24 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		# what the distintion is about.
 		
 		# find players
-		items = []
+		oldLines = []
 		players = []
 		playerNames = []
-		for item in data:
-			m = self.PatternPlayer.match(item['line'])
+		for line in lines:
+			m = self.PatternPlayer.match(line['chars'])
 			if m is None:
 				#NOTE: we can not break here because other formats may have other player flags
 				continue
-			items.append(item)
+			oldLines.append(line)
 			d = m.groupdict()
 			d['seatNo'] = int(d['seatNo'])
 			d['stack'] = self.stringToFloat(d['stack'])
 			d['sitsOut'] = bool(d['sitsOut'])
 			players.append(d)
 			playerNames.append(d['name'])
-			handled[item['lineno']] = (handler.handlePlayer, d)
-		for item in items:
-			data.remove(item)
+			events[line['index']] = (eventHandler.handlePlayer, d)
+		for line in oldLines:
+			lines.remove(line)
 				
 		# determine seat names
 		players =  players[self._seatNoButton-1:] + players[:self._seatNoButton-1]
@@ -179,21 +180,21 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 			player['buttonOrder'] = buttonOrder +1
 				
 		# find all players sitting out
-		items = []
-		for item in data:
-			m = self.PatternPlayerSitsOut.match(item['line'])
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerSitsOut.match(line['chars'])
 			if m is not None:
 				d = m.groupdict()
 				if d['name'] not in playerNames:
 					# assume cash game (see notes above)
 					d['sitsOut'] = True
-					handled[item['lineno']] = (handler.handlePlayer, d)
+					events[line['index']] = (eventHandler.handlePlayer, d)
 				else:
 					#TODO: report to hand?
-					handled[item['lineno']] = (handler.handlePlayerSitsOut, d)
-				items.append(item)
-		for item in items:
-			data.remove(item)
+					events[line['index']] = (eventHandler.handlePlayerSitsOut, d)
+				oldLines.append(line)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 	
@@ -203,14 +204,14 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		""", re.X|re.I 
 		)				
 	@HcConfig.LineParserMethod(priority=40)
-	def parsePlayerPlayerAllowedToPlay(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerAllowedToPlay.match(item['line'])
+	def parsePlayerPlayerAllowedToPlay(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerAllowedToPlay.match(line['chars'])
 			if m is not None:
-				items.append(item)
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 	
@@ -221,17 +222,17 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		""", re.X|re.I 
 		)				
 	@HcConfig.LineParserMethod(priority=45)
-	def parsePlayerPostsSmallBlind(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerPostsSmallBlind.match(item['line'])
+	def parsePlayerPostsSmallBlind(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerPostsSmallBlind.match(line['chars'])
 			if m is not None:
-				items.append(item)
+				oldLines.append(line)
 				d = m.groupdict()
 				d['amount'] = self.stringToFloat(d['amount'])
-				handled[item['lineno']] = (handler.handlePlayerPostsSmallBlind, d)
-		for item in items:
-			data.remove(item)
+				events[line['index']] = (eventHandler.handlePlayerPostsSmallBlind, d)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 			
 	
@@ -240,17 +241,17 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		""", re.X|re.I 
 		)				
 	@HcConfig.LineParserMethod(priority=50)
-	def parsePlayerPostsBigBlind(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerPostsBigBlind.match(item['line'])
+	def parsePlayerPostsBigBlind(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerPostsBigBlind.match(line['chars'])
 			if m is not None:
-				items.append(item)
+				oldLines.append(line)
 				d = m.groupdict()
 				d['amount'] = self.stringToFloat(d['amount'])
-				handled[item['lineno']] = (handler.handlePlayerPostsBigBlind, d)
-		for item in items:
-			data.remove(item)
+				events[line['index']] = (eventHandler.handlePlayerPostsBigBlind, d)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 	
@@ -259,17 +260,17 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		""", re.X|re.I 
 		)				
 	@HcConfig.LineParserMethod(priority=50)
-	def parsePlayerPostAnte(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerPostsAnte.match(item['line'])
+	def parsePlayerPostAnte(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerPostsAnte.match(line['chars'])
 			if m is not None:
-				items.append(item)
+				oldLines.append(line)
 				d = m.groupdict()
 				d['amount'] = self.stringToFloat(d['amount'])
-				handled[item['lineno']] = (handler.handlePlayerPostsAnte, d)
-		for item in items:
-			data.remove(item)
+				events[line['index']] = (eventHandler.handlePlayerPostsAnte, d)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 		
 	
@@ -279,28 +280,28 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		""", re.X|re.I 
 		)				
 	@HcConfig.LineParserMethod(priority=50)
-	def parsePlayerPostsBuyIn(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerPostsBuyIn.match(item['line'])
+	def parsePlayerPostsBuyIn(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerPostsBuyIn.match(line['chars'])
 			if m is not None:
-				items.append(item)
+				oldLines.append(line)
 				d = m.groupdict()
 				d['amount'] = self.stringToFloat(d['amount'])
-				handled[item['lineno']] = (handler.handlePlayerPostsBuyIn, d)
-		for item in items:
-			data.remove(item)
+				events[line['index']] = (eventHandler.handlePlayerPostsBuyIn, d)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 		
 	
 	PatternPreflop = re.compile("""^^\*\*\*\sHOLE\sCARDS\s\*\*\*$\s*$""")				
 	@HcConfig.LineParserMethod(priority=100)
-	def parsePreflop(self, data, handler, handled):
-		for item in data:
-			m = self.PatternPreflop.match(item['line'])
+	def parsePreflop(self, lines, eventHandler, events):
+		for line in lines:
+			m = self.PatternPreflop.match(line['chars'])
 			if m is not None:
-				handled[item['lineno']] = (handler.handlePreflop, {})
-				data.remove(item)
+				events[line['index']] = (eventHandler.handlePreflop, {})
+				lines.remove(line)
 				break
 		return True
 		
@@ -310,14 +311,14 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=150)
-	def parsePlayerPlayerHoleCards(self, data, handler, handled):
-		for item in data:
-			m = self.PatternPlayerHoleCards.match(item['line'])
+	def parsePlayerPlayerHoleCards(self, lines, eventHandler, events):
+		for line in lines:
+			m = self.PatternPlayerHoleCards.match(line['chars'])
 			if m is not None:
 				d = m.groupdict()
 				d['cards'] = (d.pop('card1'), d.pop('card2'))
-				handled[item['lineno']] = (handler.handlePlayerHoleCards, d)
-				data.remove(item)
+				events[line['index']] = (eventHandler.handlePlayerHoleCards, d)
+				lines.remove(line)
 				break
 		return True
 	
@@ -326,15 +327,15 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		"^(?P<name>.*?)\:\s checks\s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerChecks(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerChecks.match(item['line'])
+	def parsePlayerChecks(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerChecks.match(line['chars'])
 			if m is not None:
-				items.append(item)
-				handled[item['lineno']] = (handler.handlePlayerChecks, m.groupdict())
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+				events[line['index']] = (eventHandler.handlePlayerChecks, m.groupdict())
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 	
@@ -342,15 +343,15 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		"^(?P<name>.*?)\:\s folds\s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerFolds(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerFolds.match(item['line'])
+	def parsePlayerFolds(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerFolds.match(line['chars'])
 			if m is not None:
-				items.append(item)
-				handled[item['lineno']] = (handler.handlePlayerFolds, m.groupdict())
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+				events[line['index']] = (eventHandler.handlePlayerFolds, m.groupdict())
+		for line in oldLines:
+			lines.remove(line)
 		return True
 				
 	
@@ -358,17 +359,17 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		"^(?P<name>.*?)\:\s bets\s [^\d\.]?(?P<amount>[\d\.]+) (\s and\s is\s all\-in)? \s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerBets(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerBets.match(item['line'])
+	def parsePlayerBets(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerBets.match(line['chars'])
 			if m is not None:
-				items.append(item)
+				oldLines.append(line)
 				d = m.groupdict()
 				d['amount'] = self.stringToFloat(d['amount'])
-				handled[item['lineno']] = (handler.handlePlayerBets, d)
-		for item in items:
-			data.remove(item)
+				events[line['index']] = (eventHandler.handlePlayerBets, d)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 		
 	
@@ -376,17 +377,17 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		"^(?P<name>.*?)\:\s raises\s .*? to\s [^\d\.]?(?P<amount>[\d\.]+) (\s and\s is\s all\-in)?\s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerRaises(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerRaises.match(item['line'])
+	def parsePlayerRaises(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerRaises.match(line['chars'])
 			if m is not None:
-				items.append(item)
+				oldLines.append(line)
 				d = m.groupdict()
 				d['amount'] = self.stringToFloat(d['amount'])
-				handled[item['lineno']] = (handler.handlePlayerRaises, d)
-		for item in items:
-			data.remove(item)
+				events[line['index']] = (eventHandler.handlePlayerRaises, d)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 	
@@ -394,17 +395,17 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		"^(?P<name>.*?)\:\s calls\s [^\d\.]?(?P<amount>[\d\.]+) (\s and\s is\s all\-in)?\s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerCalls(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerCalls.match(item['line'])
+	def parsePlayerCalls(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerCalls.match(line['chars'])
 			if m is not None:
-				items.append(item)
+				oldLines.append(line)
 				d = m.groupdict()
 				d['amount'] = self.stringToFloat(d['amount'])
-				handled[item['lineno']] = (handler.handlePlayerCalls, d)
-		for item in items:
-			data.remove(item)
+				events[line['index']] = (eventHandler.handlePlayerCalls, d)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 	#TODO: convert text to unicode?
@@ -412,16 +413,16 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		"^(?P<name>.*?)\s said,\s \"(?P<text>.*)\" \s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerChats(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerChats.match(item['line'])
+	def parsePlayerChats(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerChats.match(line['chars'])
 			if m is not None:
-				items.append(item)
+				oldLines.append(line)
 				d = m.groupdict()
-				handled[item['lineno']] = (handler.handlePlayerChats, d)
-		for item in items:
-			data.remove(item)
+				events[line['index']] = (eventHandler.handlePlayerChats, d)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 	
@@ -430,14 +431,14 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		"^(?P<name>.*?)\s is\s disconnected \s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerDisconnected(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerDisconnected.match(item['line'])
+	def parsePlayerDisconnected(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerDisconnected.match(line['chars'])
 			if m is not None:
-				items.append(item)
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 	
@@ -446,14 +447,14 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		"^(?P<name>.*?)\s is\s connected \s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerReconnects(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerReconnects.match(item['line'])
+	def parsePlayerReconnects(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerReconnects.match(line['chars'])
 			if m is not None:
-				items.append(item)
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 	
@@ -462,14 +463,14 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		"^(?P<name>.*?)\s has\s timed\s out \s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerTimedOut(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerTimedOut.match(item['line'])
+	def parsePlayerTimedOut(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerTimedOut.match(line['chars'])
 			if m is not None:
-				items.append(item)
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 	
@@ -478,14 +479,14 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		"^(?P<name>.*?)\s has\s returned \s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerReturns(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerReturns.match(item['line'])
+	def parsePlayerReturns(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerReturns.match(line['chars'])
 			if m is not None:
-				items.append(item)
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 	
@@ -494,14 +495,14 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		"^(?P<name>.*?)\s has\s timed\s out\s while\s (being\s)? disconnected \s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerTimedOutWhileDisconnected(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerTimedOutWhileDisconnected.match(item['line'])
+	def parsePlayerTimedOutWhileDisconnected(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerTimedOutWhileDisconnected.match(line['chars'])
 			if m is not None:
-				items.append(item)
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 	
@@ -511,14 +512,14 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		"^(?P<name>.*?)\s was\s removed\s from\s the\s table\s .* \s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerRemoved(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerRemoved.match(item['line'])
+	def parsePlayerRemoved(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerRemoved.match(line['chars'])
 			if m is not None:
-				items.append(item)
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 	
@@ -532,14 +533,14 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
 	)				
 	@HcConfig.LineParserMethod(priority=200)
-	def parsFlop(self, data, handler, handled):
-		for item in data:
-			m = self.PatternFlop.match(item['line'])
+	def parsFlop(self, lines, eventHandler, events):
+		for line in lines:
+			m = self.PatternFlop.match(line['chars'])
 			if m is not None:
 				d = m.groupdict()
 				d['cards'] = (d.pop('card1'), d.pop('card2'), d.pop('card3'))
-				handled[item['lineno']] = (handler.handleFlop, d)
-				data.remove(item)
+				events[line['index']] = (eventHandler.handleFlop, d)
+				lines.remove(line)
 				break
 		return True
 	
@@ -552,13 +553,13 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	\s*$""", re.X|re.I
 	)				
 	@HcConfig.LineParserMethod(priority=200)
-	def parsTurn(self, data, handler, handled):
-		for item in data:
-			m = self.PatternTurn.match(item['line'])
+	def parsTurn(self, lines, eventHandler, events):
+		for line in lines:
+			m = self.PatternTurn.match(line['chars'])
 			if m is not None:
 				d = m.groupdict()
-				handled[item['lineno']] = (handler.handleTurn, d)
-				data.remove(item)
+				events[line['index']] = (eventHandler.handleTurn, d)
+				lines.remove(line)
 				break
 		return True
 	
@@ -571,25 +572,25 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	\s*$""", re.X|re.I
 	)				
 	@HcConfig.LineParserMethod(priority=200)
-	def parsRiver(self, data, handler, handled):
-		for item in data:
-			m = self.PatternRiver.match(item['line'])
+	def parsRiver(self, lines, eventHandler, events):
+		for line in lines:
+			m = self.PatternRiver.match(line['chars'])
 			if m is not None:
 				d = m.groupdict()
-				handled[item['lineno']] = (handler.handleRiver, d)
-				data.remove(item)
+				events[line['index']] = (eventHandler.handleRiver, d)
+				lines.remove(line)
 				break
 		return True
 		
 		
 	PatternShowDown = re.compile("""^^\*\*\*\sSHOW\sDOWN\s\*\*\*\s*$""")				
 	@HcConfig.LineParserMethod(priority=300)
-	def parseShowDown(self, data, handler, handled):
-		for item in data:
-			m = self.PatternShowDown.match(item['line'])
+	def parseShowDown(self, lines, eventHandler, events):
+		for line in lines:
+			m = self.PatternShowDown.match(line['chars'])
 			if m is not None:
-				handled[item['lineno']] = (handler.handleShowDown, {})
-				data.remove(item)
+				events[line['index']] = (eventHandler.handleShowDown, {})
+				lines.remove(line)
 				break
 		return True
 	
@@ -604,17 +605,17 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		""", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerShows(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerShows.match(item['line'])
+	def parsePlayerShows(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerShows.match(line['chars'])
 			if m is not None:
-				items.append(item)
+				oldLines.append(line)
 				d = m.groupdict()
 				d['cards'] = (d.pop('card1'), d.pop('card2'))
-				handled[item['lineno']] = (handler.handlePlayerShows, d)
-		for item in items:
-			data.remove(item)
+				events[line['index']] = (eventHandler.handlePlayerShows, d)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 		
@@ -630,32 +631,32 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		""", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerMucks(self, data, handler, handled):
-		items = []
+	def parsePlayerMucks(self, lines, eventHandler, events):
+		oldLines = []
 		players = {}
-		for item in data:
-			m = self.PatternPlayerMucks.match(item['line'])
+		for line in lines:
+			m = self.PatternPlayerMucks.match(line['chars'])
 			if m is not None:
-				items.append(item)
+				oldLines.append(line)
 				d = m.groupdict()
 				d['cards'] = None
-				players[d['name']] = (d, item['lineno'])
-		for item in items:
-			data.remove(item)
+				players[d['name']] = (d, line['index'])
+		for line in oldLines:
+			lines.remove(line)
 			
 		# try to find hole cards player mucked
-		items = []
-		for item in data:
-			m = self.PatternPlayerMucked.match(item['line'])
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerMucked.match(line['chars'])
 			if m is not None:
-				items.append(item)
+				oldLines.append(line)
 				d = m.groupdict()
 				players[d['name']][0]['cards'] = (d.pop('card1'), d.pop('card2'))
-		for item in items:
-			data.remove(item)
+		for line in oldLines:
+			lines.remove(line)
 			
 		for name, (d, lineno) in players.items():
-			handled[item['lineno']] = (handler.handlePlayerMucks, d)
+			events[line['index']] = (eventHandler.handlePlayerMucks, d)
 		return True	
 		
 		
@@ -668,12 +669,12 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		) \s*$""", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=400)
-	def parsePlayerWins(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerCollected.match(item['line'])
+	def parsePlayerWins(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerCollected.match(line['chars'])
 			if m is not None:
-				items.append(item)
+				oldLines.append(line)
 				d = m.groupdict()
 				d['amount'] = self.stringToFloat(d['amount'])
 				pot = d.pop('pot').lower()
@@ -685,14 +686,14 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 				elif pot.startswith('side pot'):
 					d['potNo'] = 1 if d['potNo'] is None else int(d['potNo'])
 				else:
-					# clear data up to err line
-					while data:
-						if data[0]['lineno'] < item['lineno']:
-							data.pop(0)
+					# clear lines up to err line
+					while lines:
+						if lines[0]['lineno'] < line['index']:
+							lines.pop(0)
 					return False
-				handled[item['lineno']] = (handler.handlePlayerWins, d)
-		for item in items:
-			data.remove(item)
+				events[line['index']] = (eventHandler.handlePlayerWins, d)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 				
 	
@@ -703,14 +704,14 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		"^Uncalled\s bet\s \([^\d\.]?(?P<amount>[\d\.]+)\)\s returned\s to\s (?P<name>.*?) \s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=400)
-	def parseUncalledBet(self, data, handler, handled):
-		for item in data:
-			m = self.PatternUncalledBet.match(item['line'])
+	def parseUncalledBet(self, lines, eventHandler, events):
+		for line in lines:
+			m = self.PatternUncalledBet.match(line['chars'])
 			if m is not None:
 				d = m.groupdict()
 				d['amount'] = self.stringToFloat(d['amount'])
-				handled[item['lineno']] = (handler.handleUncalledBet, d)
-				data.remove(item)
+				events[line['index']] = (eventHandler.handleUncalledBet, d)
+				lines.remove(line)
 				# logic says there can only be one uncalled bet per hand
 				break
 		return True
@@ -721,11 +722,11 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		""", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=450)
-	def parsePlayerDoesNotShowHand(self, data, handler, handled):
-		for item in data:
-			m = self.PatternPlayerDoesNotShowHand.match(item['line'])
+	def parsePlayerDoesNotShowHand(self, lines, eventHandler, events):
+		for line in lines:
+			m = self.PatternPlayerDoesNotShowHand.match(line['chars'])
 			if m is not None:
-				data.remove(item)
+				lines.remove(line)
 				# logic says there can only be one "player does not show hand" per hand
 				break
 		return True
@@ -736,14 +737,14 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		""", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=450)
-	def parsePlayerLeavesTable(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerLeavesTable.match(item['line'])
+	def parsePlayerLeavesTable(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerLeavesTable.match(line['chars'])
 			if m is not None:
-				items.append(item)
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+		for line in oldLines:
+			lines.remove(line)
 		return True	
 	
 	
@@ -752,41 +753,41 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		""", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=450)
-	def parsePlayerJoinsTable(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerJoinsTable.match(item['line'])
+	def parsePlayerJoinsTable(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerJoinsTable.match(line['chars'])
 			if m is not None:
-				items.append(item)
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 		
-	# clean up handled
+	# clean up events
 		
 	PatternSummary = re.compile("""^^\*\*\*\sSUMMARY\s\*\*\*\s*$""")				
 	@HcConfig.LineParserMethod(priority=9998)
-	def parseSummary(self, data, handler, handled):
-		for i, item in enumerate(data):
-			m = self.PatternSummary.match(item['line'])
+	def parseSummary(self, lines, eventHandler, events):
+		for i, line in enumerate(lines):
+			m = self.PatternSummary.match(line['chars'])
 			if m is not None:
 				# drop summary, we don't need it
-				while i < len(data):
-					data.pop(i)
+				while i < len(lines):
+					lines.pop(i)
 				break	
 		return True
 	
 		
 	PatternEmptyLine = re.compile('^\s*$')
 	@HcConfig.LineParserMethod(priority=9999)
-	def parseEmptyLines(self, data, handler, handled):
-		items = []
-		for item in data:
-			if self.PatternEmptyLine.match(item['line']) is not None:
-				items.append(item)	
-		for item in items:
-			data.remove(item)
+	def parseEmptyLines(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			if self.PatternEmptyLine.match(line['chars']) is not None:
+				oldLines.append(line)	
+		for line in oldLines:
+			lines.remove(line)
 		return True
 
 #************************************************************************************
@@ -795,16 +796,17 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 # older header - no local date/time in header
 class PokerStarsParserHoldemENCashGame1(PokerStarsParserHoldemENCashGame2):
 	
-	Metadata = {
-			'dataType': HcConfig.DataTypeHand, 
-			'game': HcConfig.GameHoldem,
-			'gameContext': HcConfig.GameContextCashGame,
-			'site': HcConfig.SitePokerStars,
-			'version': '0',
-			} 
+	ID = HcConfig.HcID(
+			dataType=HcConfig.DataTypeHand, 
+			language=HcConfig.LanguageEN,
+			game=HcConfig.GameHoldem,
+			gameContext=HcConfig.GameContextCashGame,
+			site=HcConfig.SitePokerStars,
+			version='1',
+			) 
 		
 	def canParse(self, lines):
-		return HcPokerStarsConfig.gameHeaderType(lines[0]) == HcPokerStarsConfig.GameHeaderTypeHoldemCashGame1
+		return HcPokerStarsConfig.gameHeaderType(lines[0]['chars']) == HcPokerStarsConfig.GameHeaderTypeHoldemCashGame1
 	
 	# PokerStars Game #0123456789:  Hold'em No Limit ($0.00/$0.00) - 0000/00/00 00:00:00 TZ
 	PatternGameHeader = re.compile(
@@ -833,16 +835,17 @@ class PokerStarsParserHoldemENCashGame1(PokerStarsParserHoldemENCashGame2):
 #************************************************************************************
 class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 	
-	Metadata = {
-			'dataType': HcConfig.DataTypeHand, 
-			'game': HcConfig.GameHoldem,
-			'gameContext': HcConfig.GameContextTourney,
-			'site': HcConfig.SitePokerStars,
-			'version': '1',
-			}
+	ID = HcConfig.HcID(
+			dataType=HcConfig.DataTypeHand, 
+			language=HcConfig.LanguageEN,
+			game=HcConfig.GameHoldem,
+			gameContext=HcConfig.GameContextTourney,
+			site=HcConfig.SitePokerStars,
+			version='2',
+			)
 	
 	def canParse(self, lines):
-		return HcPokerStarsConfig.gameHeaderType(lines[0]) == HcPokerStarsConfig.GameHeaderTypeHoldemTourney2
+		return HcPokerStarsConfig.gameHeaderType(lines[0]['chars']) == HcPokerStarsConfig.GameHeaderTypeHoldemTourney2
 	
 	
 	#PokerStars Game #0123456789: Tournament #0123456789, 0000+000 Hold'em No Limit - Level I (10/20) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
@@ -887,11 +890,11 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 		)
 	
 	@HcConfig.LineParserMethod(priority=1)
-	def parseGameHeader(self, data, handler, handled):
-		if not PokerStarsParserHoldemENCashGame1.parseGameHeader(self, data, handler, handled):
+	def parseGameHeader(self, lines, eventHandler, events):
+		if not PokerStarsParserHoldemENCashGame1.parseGameHeader(self, lines, eventHandler, events):
 			return False
 				
-		d = handled[0][1]
+		d = events[0][1]
 		tourneyBuyInType = d.pop('tourneyBuyInType').lower()
 		if tourneyBuyInType == 'freeroll':
 			d['tourneyBuyIn'] = 0,0171
@@ -903,83 +906,84 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 		return True
 		
 		
-	#TODO: pass to hand? extract more data?
+	#TODO: pass to hand? extract more lines?
 	# "player" finished the tournament in 2nd place and received $0.00
 	PatternPlayerFinishesTourney = re.compile(
 		"^(?P<name>.*?)\s finished\s the\s tournament\s in\s .* \s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerFinishesTourney(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerFinishesTourney.match(item['line'])
+	def parsePlayerFinishesTourney(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerFinishesTourney.match(line['chars'])
 			if m is not None:
-				items.append(item)
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	
 		
-	#TODO: pass to hand? extract more data?
+	#TODO: pass to hand? extract more lines?
 	# "player" wins the tournament and receives $0.00 - congratulations!
 	PatternPlayerWinsTourney = re.compile(
 		"^(?P<name>.*?)\s wins\s the\s tournament\s .* \s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerWinsTourney(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerWinsTourney.match(item['line'])
+	def parsePlayerWinsTourney(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerWinsTourney.match(line['chars'])
 			if m is not None:
-				items.append(item)
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 		
 	# "player" wins the $0.00 bounty for eliminating "player"
-	#TODO: pass to hand? extract more data?
+	#TODO: pass to hand? extract more lines?
 	PatternPlayerWinsBounty = re.compile(
 		"^(?P<name>.*?)\s wins\s the\s [^\d\.]?(?P<amount>[\d\.]+)\s bounty\s .+ \s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerWinsBounty(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerWinsBounty.match(item['line'])
+	def parsePlayerWinsBounty(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerWinsBounty.match(line['chars'])
 			if m is not None:
-				items.append(item)
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 	 	
 	# "player" (0000 in chips) out of hand (moved from another table into small blind)
-	#TODO: pass to hand? extract more data?
+	#TODO: pass to hand? extract more lines?
 	PatternPlayerOutOfHand = re.compile(
 		"^(?P<name>.*?)\s \([\d]+\s in\s chips\)\s out\s of\s hand\s .+  \s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
-	def parsePlayerOutOfHand(self, data, handler, handled):
-		items = []
-		for item in data:
-			m = self.PatternPlayerOutOfHand.match(item['line'])
+	def parsePlayerOutOfHand(self, lines, eventHandler, events):
+		oldLines = []
+		for line in lines:
+			m = self.PatternPlayerOutOfHand.match(line['chars'])
 			if m is not None:
-				items.append(item)
-		for item in items:
-			data.remove(item)
+				oldLines.append(line)
+		for line in oldLines:
+			lines.remove(line)
 		return True
 
 class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENTourney2):
 	
-	Metadata = {
-			'dataType': HcConfig.DataTypeHand, 
-			'game': HcConfig.GameHoldem,
-			'gameContext': HcConfig.GameContextTourney,
-			'site': HcConfig.SitePokerStars,
-			'version': '0',
-			}
+	Id = HcConfig.HcID(
+			dataType=HcConfig.DataTypeHand, 
+			language=HcConfig.LanguageEN,
+			game=HcConfig.GameHoldem,
+			gameContext=HcConfig.GameContextTourney,
+			site=HcConfig.SitePokerStars,
+			version='1',
+			)
 	
 	def canParse(self, lines):
-		return HcPokerStarsConfig.gameHeaderType(lines[0]) == HcPokerStarsConfig.GameHeaderTypeHoldemTourney1
+		return HcPokerStarsConfig.gameHeaderType(lines[0]['chars']) == HcPokerStarsConfig.GameHeaderTypeHoldemTourney1
 	
 	# PokerStars Game #0123456789: Tournament #0123456789, $0.00+$0.00 Hold'em No Limit - Level I (10/20) - 0000/00/00 00:00:00 ET
 	PatternGameHeader = re.compile(
@@ -1022,15 +1026,17 @@ class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENTourney2):
 if __name__ == '__main__':
 	
 	from oo1 import hh
-	hh = hh.split('\n')
-	p = PokerStarsParserHoldemENTourney1()
-	handler = HcConfig.HandHoldemDebug()
-	hand = p.feed(hh, handler)
+	hh = HcConfig.linesFromString(hh)
+	p = PokerStarsParserHoldemENCashGame2()
+	eventHandler = HcConfig.HandHoldemDebug()
+	hand = p.feed(hh, eventHandler)
+	print hand
+	
 	
 	import cProfile as profile	
 	def test():
 		for i in xrange(20000):
-			hand = p.feed(hh, handler)
+			hand = p.feed(hh, eventHandler)
 	##profile.run('test()')
 
 	
