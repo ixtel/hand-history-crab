@@ -36,6 +36,13 @@ GameHoldem = 'Holdem'
 GameContextNone = ''
 GameContextCashGame = 'CashGame'
 GameContextTourney = 'Tourney'
+GameContextHorse = 'Horse'
+GameContextEightGame = 'EightGame'
+GameContextMixedGame = 'MixedGame'
+
+GameScopeNone = ''
+GameScopePublic = 'Regular'
+GameScopeHomeGame = 'HomeGame'
 
 GameLimitNone = ''
 GameLimitNoLimit = 'NoLimit'
@@ -46,6 +53,7 @@ CurrencyNone = ''
 CurrencyUSD = 'USD'
 CurrencyEUR = 'EUR'
 CurrencyGBP = 'GBP'
+#CurrencyPokerStarsFPP = 'PokerStars-FPP'
 
 #************************************************************************************
 # helper methods
@@ -74,7 +82,7 @@ def linesToString(lines,lineFeed=LineFeed):
 #************************************************************************************
 class HcID(object):
 	def __init__(self, **kws):
-		self._kwList = tuple(kws.items())
+		self._kwList = tuple(sorted(kws.items()))
 		self._kws = kws
 	def contains(self, **kws):
 		for name, value in kws.items():
@@ -88,8 +96,10 @@ class HcID(object):
 	def __hash__(self): return hash(self._kwList)
 	def __nonzero__(self): return bool(self._kws)
 	def __getitem__(self, name):	return self._kws[name]
-	
-
+	def toString(self):
+		return '/'.join(['%s:%s' % (field, value) for field, value in self._kwList])
+		
+		
 class HcObjectBase(object):
 	ID = HcID()
 	
@@ -115,14 +125,22 @@ class HandHoldem(EventHandlerBase):
 		
 	def handleHandStart(self, 
 			site=SiteNone, 
+					
+			gameScope=GameScopeNone,
+			gameContext=GameContextNone,
+						
+			game=GameNone,
+			gameLimit=GameLimitNone, 
+						
 			tourneyID='',
 			tourneyBuyIn=0.0,
 			tourneyRake=0.0,
 			tourneyBounty=0.0,
+			
 			homeGameID='',
+			
 			handID='',
-			game=GameNone, 
-			gameLimit=GameLimitNone, 
+			
 			time=TimeNone,
 			tableName='',
 			maxPlayers=0,
@@ -280,9 +298,14 @@ Parsers = {}	# HcID --> Parser
 
 
 class ParseError(Exception):
-		def __init__(self, msg, lineno=0):
-			self.lineno = lineno
-			Exception.__init__(self, msg)
+		def __init__(self, msg, line=None, fileName=''):
+			self.line = line
+			self.fileName = fileName
+			err = msg + '\n'
+			err += 'in: %s\n' % self.fileName
+			err += 'at lineno: %s\n' % self.line['lineno']
+			err += self.line['chars']
+			Exception.__init__(self, err)
 
 
 class LineParserMethod(object):
@@ -336,17 +359,7 @@ class LineParserBase(HcObjectBase):
 		ParserMethodNames.sort()
 		self.ParserMethodNames = [i[1] for i in ParserMethodNames]
 							
-	def canParse(self, lines):
-		"""checks if the parser can parse the lines parsed
-		@return: (bool)
-		"""
-		return False
-		
-	
 	def feed(self, lines, eventHandler):
-		if not self.canParse(lines):
-			return None
-				
 		myLines = [{'lineno': line['lineno'], 'chars': line['chars'], 'index': index} for index, line in enumerate(lines)]
 		events = [None]*len(lines)
 		eventHandler.handleParseStart(myLines)
@@ -356,12 +369,8 @@ class LineParserBase(HcObjectBase):
 			if not getattr(self, name)(myLines, eventHandler, events):
 				break
 		if myLines:
-			err = 'could not parse hand (lineno %s)\n' % myLines[0]['lineno']
-			err += 'line: %s\n' % myLines[0]['chars']
-			err += '\n'
-			err += linesToString(lines)
-			raise ParseError(err, myLines[0]['lineno'])	
-		
+			raise ParseError('Could not parse lines:', line=myLines[0], fileName='')
+				
 		for event in events:
 			if event is not None:
 				event[0](**event[1])

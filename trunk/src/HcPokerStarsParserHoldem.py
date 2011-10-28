@@ -2,7 +2,6 @@
 
 import re
 import HcConfig
-import HcPokerStarsConfig
 from HcLib.PokerTools import PtSeats
 
 
@@ -10,8 +9,52 @@ from HcLib.PokerTools import PtSeats
 #TODO:stars does not show ante in game header
 #TODO: seen player buying in posting 1) BB 2) SB 3) BB + SB have to check this
 #      and add a eventHandler to Hand() ..something like handlePlayerBuysIn(). 
-#TODO: HORSE and other mixed games
-#TODO: how to oragnize parser versions?
+
+#************************************************************************************
+#NOTES:
+#
+# PokerStars rake (thanks PokerStars nick): 
+# -----------------------------------------
+# pot total gives the rake to be taken, according to [http://www.pokerstars.com/poker/room/rake/].
+# rake is then taken from each pot (starting from  the main pot) when the threshold is hit.
+#
+# example - assume 1c for each 20c (threshold) in the pot:
+# mainPot = 14
+# sidePot1 = 20
+# sidePot2 = 66
+# total = 100
+# rake = 5
+#
+# * mainPot does not hit the threshold so 0c are taken (remainder 14c)
+# * the first 6c of sidePot1 hit the threshold of 20c so 1c is taken (remainder 14c)
+# * the first 6c of sidePot 2 hit the threshold so 1c is taken and there are 60c left
+#   in the pot that are raked with 3c.
+#
+# so mainPot is raked 0c, sidePot1 1c and sidePot2 4c.
+#************************************************************************************
+# consts
+#************************************************************************************
+CurrencySymbols = u'$€£'
+
+GameMapping = {
+		"Hold'em": HcConfig.GameHoldem,
+		}
+
+GameLimitMapping = {
+		"no limit": HcConfig.GameLimitNoLimit,
+		"pot limit": HcConfig.GameLimitPotLimit,
+		"fixed limit": HcConfig.GameLimitFixedLimit,
+		}
+
+CurrencyMapping = {
+		'': HcConfig.CurrencyNone,
+		'$': HcConfig.CurrencyUSD,
+		u'€': HcConfig.CurrencyEUR,
+		u'£':  HcConfig.CurrencyGBP,
+		
+		}
+
+
 
 #************************************************************************************
 # parser implementation
@@ -23,6 +66,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 			language=HcConfig.LanguageEN,
 			game=HcConfig.GameHoldem,
 			gameContext=HcConfig.GameContextCashGame,
+			gameScope=HcConfig.GameScopePublic,
 			site=HcConfig.SitePokerStars,
 			version='2',
 			)
@@ -31,9 +75,6 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		HcConfig.LineParserBase.__init__(self, *args, **kws)
 		self._seatNoButton = 0
 		
-	def canParse(self, lines):
-		return HcPokerStarsConfig.gameHeaderType(lines[0]['chars']) == HcPokerStarsConfig.GameHeaderTypeHoldemCashGame2
-			
 	def feed(self, *args, **kws):
 		self._seatNoButton = 0
 		return HcConfig.LineParserBase.feed(self, *args, **kws)
@@ -44,9 +85,8 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	# PokerStars Home Game #0123456789: {HomeGameName}  Hold'em No Limit ($0.00/$0.00 USD) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
 	# PokerStars Home Game #0123456789: Hold'em No Limit ($0.00/$0.00 USD) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
 	PatternGameHeader = re.compile(
-		"""^PokerStars\s (Game|Home\s Game)\s
+		"""^PokerStars\s Game \s
 			\#(?P<handID>\d+)\:\s+
-			(\{(?P<homeGameID>.+?)\}\s+)?
 			(?P<game>Hold\'em)\s
 			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
 			\(
@@ -95,15 +135,15 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		
 		self._seatNoButton = int(d.pop('seatNoButton'))
 		d['site'] = self.ID['site']
-		d['game'] = HcPokerStarsConfig.GameMapping[d['game']]
-		d['gameLimit'] = HcPokerStarsConfig.GameLimitMapping[d['gameLimit'].lower()]
+		d['game'] = GameMapping[d['game']]
+		d['gameLimit'] = GameLimitMapping[d['gameLimit'].lower()]
 		#NOTE: stars added currency to header at some point, but this is pretty useless
 		# for parsing old hand histories, so we parse currency symbols directly
 		line = lines[0]['chars']
-		currency = HcPokerStarsConfig.CurrencyMapping['']
-		for symbol in HcPokerStarsConfig.CurrencySymbols:
+		currency = CurrencyMapping['']
+		for symbol in CurrencySymbols:
 			if symbol in line:
-				currency = HcPokerStarsConfig.CurrencyMapping[symbol]
+				currency = CurrencyMapping[symbol]
 				break
 		d['currency'] = currency
 		d['bigBlind'] = self.stringToFloat(d['bigBlind'])
@@ -169,6 +209,9 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 			players.append(d)
 			playerNames.append(d['name'])
 			events[line['index']] = (eventHandler.handlePlayer, d)
+			#NOTE: we can handle only so much players, so let ParserBase deal with remainder
+			if len(players) > len(PtSeats.Seats.SeatNames):
+				break
 		for line in oldLines:
 			lines.remove(line)
 				
@@ -793,6 +836,46 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 #************************************************************************************
 #
 #************************************************************************************
+class PokerStarsParserHoldemENCashGameHomeGame2(PokerStarsParserHoldemENCashGame2):
+	
+	ID = HcConfig.HcID(
+			dataType=HcConfig.DataTypeHand, 
+			language=HcConfig.LanguageEN,
+			game=HcConfig.GameHoldem,
+			gameContext=HcConfig.GameContextCashGame,
+			gameScope=HcConfig.GameScopeHomeGame,
+			site=HcConfig.SitePokerStars,
+			version='2',
+			)
+	
+	PatternGameHeader = re.compile(
+		"""^PokerStars\s Home\s Game\s
+			\#(?P<handID>\d+)\:\s+
+			\{(?P<homeGameID>.+?)\}\s+
+			(?P<game>Hold\'em)\s
+			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
+			\(
+				[^\d\.]?(?P<smallBlind>[\d\.]+)\/
+				[^\d\.]?(?P<bigBlind>[\d\.]+)
+				\s?
+				(?P<currency>[A-Z]+)?
+			\)
+			\s-\s
+			.*
+			\[
+				(?P<year>\d+)\/
+				(?P<month>\d+)\/
+				(?P<day>\d+)\s
+				(?P<hour>\d+)\:
+				(?P<minute>\d+)\:
+				(?P<second>\d+)
+				.*
+			\]\s*$
+		""", re.X|re.I)
+		
+#************************************************************************************
+#
+#************************************************************************************
 # older header - no local date/time in header
 class PokerStarsParserHoldemENCashGame1(PokerStarsParserHoldemENCashGame2):
 	
@@ -801,13 +884,11 @@ class PokerStarsParserHoldemENCashGame1(PokerStarsParserHoldemENCashGame2):
 			language=HcConfig.LanguageEN,
 			game=HcConfig.GameHoldem,
 			gameContext=HcConfig.GameContextCashGame,
+			gameScope=HcConfig.GameScopePublic,
 			site=HcConfig.SitePokerStars,
 			version='1',
 			) 
 		
-	def canParse(self, lines):
-		return HcPokerStarsConfig.gameHeaderType(lines[0]['chars']) == HcPokerStarsConfig.GameHeaderTypeHoldemCashGame1
-	
 	# PokerStars Game #0123456789:  Hold'em No Limit ($0.00/$0.00) - 0000/00/00 00:00:00 TZ
 	PatternGameHeader = re.compile(
 		"""^PokerStars\s Game\s
@@ -828,11 +909,12 @@ class PokerStarsParserHoldemENCashGame1(PokerStarsParserHoldemENCashGame2):
 			.+\s*$""", re.X|re.I
 		)
 	
-	
-	
+
 #************************************************************************************
 #
 #************************************************************************************
+#TODO: home game tourneys
+
 class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 	
 	ID = HcConfig.HcID(
@@ -840,17 +922,13 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 			language=HcConfig.LanguageEN,
 			game=HcConfig.GameHoldem,
 			gameContext=HcConfig.GameContextTourney,
+			gameScope=HcConfig.GameScopePublic,
 			site=HcConfig.SitePokerStars,
 			version='2',
 			)
 	
-	def canParse(self, lines):
-		return HcPokerStarsConfig.gameHeaderType(lines[0]['chars']) == HcPokerStarsConfig.GameHeaderTypeHoldemTourney2
-	
-	
 	#PokerStars Game #0123456789: Tournament #0123456789, 0000+000 Hold'em No Limit - Level I (10/20) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
 	#PokerStars Game #0123456789: Tournament #0123456789, $0.00+$0.00 USD Hold'em No Limit - Match Round I, Level I (10/20) - 0000/00/00 0:00:00 TZ [0000/00/00 0:00:00 TZ]
-
 	PatternGameHeader = re.compile(
 		"""^PokerStars\s Game\s
 			\#(?P<handID>\d+)\:\s
@@ -978,12 +1056,10 @@ class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENTourney2):
 			language=HcConfig.LanguageEN,
 			game=HcConfig.GameHoldem,
 			gameContext=HcConfig.GameContextTourney,
+			gameScope=HcConfig.GameScopePublic,
 			site=HcConfig.SitePokerStars,
 			version='1',
 			)
-	
-	def canParse(self, lines):
-		return HcPokerStarsConfig.gameHeaderType(lines[0]['chars']) == HcPokerStarsConfig.GameHeaderTypeHoldemTourney1
 	
 	# PokerStars Game #0123456789: Tournament #0123456789, $0.00+$0.00 Hold'em No Limit - Level I (10/20) - 0000/00/00 00:00:00 ET
 	PatternGameHeader = re.compile(
@@ -1028,6 +1104,9 @@ if __name__ == '__main__':
 	from oo1 import hh
 	hh = HcConfig.linesFromString(hh)
 	p = PokerStarsParserHoldemENCashGame2()
+	p = PokerStarsParserHoldemENCashGameHomeGame2()
+	p = PokerStarsParserHoldemENTourney2()
+	
 	eventHandler = HcConfig.HandHoldemDebug()
 	hand = p.feed(hh, eventHandler)
 	print hand
