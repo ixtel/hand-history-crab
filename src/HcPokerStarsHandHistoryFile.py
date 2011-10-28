@@ -1,7 +1,7 @@
 
 import codecs
 import HcConfig
-import HcPokerStarsParserHoldem
+import HcPokerStarsConfig
 #************************************************************************************
 #
 #************************************************************************************
@@ -15,10 +15,14 @@ class PokerStarsHandHistoryFile(object):
 		fp = codecs.open(fileName, encoding='utf-8')
 		try:
 			data = fp.read()
+		except UnicodeDecodeError: pass
+		else:
 			#NOTE: remove BOM if present
 			if data.startswith(unicode(codecs.BOM_UTF8, 'utf-8')):
 				data = data[1:]
-		except UnicodeDecodeError: pass
+			#NOTE: found that some files (TourneySumaries) are tagged with \x10
+			if data.startswith('\x10'):
+				data = data[1:]
 		finally:
 			fp.close()
 		if data is None:
@@ -28,38 +32,40 @@ class PokerStarsHandHistoryFile(object):
 			finally:
 				fp.close()
 		lines = HcConfig.linesFromString(data)
-		return klass(lines)
+		return klass(lines, fileName=fileName)
 		
 	@classmethod	
 	def fromString(klass, data):
 		lines = HcConfig.linesFromString(data)
-		return klass(lines)	
+		return klass(lines, fileName='')	
 		
-	def __init__(self, lines):
-		self._handHistories = []
-		self._lines = lines
-		self._parse()	
+	def __init__(self, lines, fileName=''):
+		self.fileName = fileName
+		self.handHistories = []
+		self.lines = lines
+		self.parse()	
 		
 	#TODO: file looks like a HandHistory to us but is a 10gigs of garbage? 
-	def _parse(self):
-		handHistory = None
-		for line in self._lines:
+	def parse(self):
+		self.handHistories = []
+		for line in self.lines:
 			chars = line['chars'].strip()
-			if self.lineIsGameHeader(chars):
-				handHistory = [line, ]
+			if not chars: continue
+			
+			ID = HcPokerStarsConfig.handHistoryType((line, ))
+			if not ID and not self.handHistories:
+				raise HcConfig.ParseError('Couuld not parse file:', line=line, fileName=self.fileName)
+			elif not ID:
+				self.handHistories[-1][1].append(line)
 				continue
-			elif handHistory and chars:
-				handHistory.append(line)
-			elif handHistory and not chars:
-				self._handHistories.append(handHistory)
-				handHistory = None
-		if handHistory:
-			self._handHistories.append(handHistory)
+			else:
+				self.handHistories.append([ID, [line, ]])
+			
+	def __len__(self): return len(self.handHistories)
+	def __getitem__(self, i): return self.handHistories[i]
+	def __iter__(self): return iter(self.handHistories)
+	def lines(self): return self.lines
 
-	def lineIsGameHeader(self, line):
-		 return line.startswith('PokerStars Game #') or line.startswith('PokerStars Home Game #')
-		
-	def __len__(self): return len(self._handHistories)
-	def __getitem__(self, i): return self._handHistories[i]
-	def __iter__(self): return iter(self._handHistories)
-	def lines(self): return self._lines
+
+
+
