@@ -1,7 +1,6 @@
 
 import codecs
 import HcConfig
-import HcPokerStarsConfig
 #************************************************************************************
 #
 #************************************************************************************
@@ -41,26 +40,28 @@ class PokerStarsStructuredTextFile(object):
 		
 	def __init__(self, lines, fileName=''):
 		self.fileName = fileName
-		self.sections = []
 		self.lines = lines
-		self.parse()	
-		
+			
 	#TODO: file looks like a HandHistory to us but is 10gigs of garbage? 
-	def parse(self):
-		self.sections = []
+	def __iter__(self):
+		section = []
 		for line in self.lines:
 			chars = line['chars'].strip()
 			if not chars: continue
 			#NOTE: seen unicode BOM trailing game headers. no idea why and what to do.
 			# our implementation simply treats them as unidentified section. 
 			ID = self.sectionType((line, ))
-			if not ID and not self.sections:
-				self.sections.append([HcConfig.HcID(), [line, ]])
+			if not ID and not section:
+				section = [HcConfig.HcID(), [line, ]]
 			elif not ID:
-				self.sections[-1][1].append(line)
+				section[1].append(line)
 				continue
 			else:
-				self.sections.append([ID, [line, ]])
+				if section:
+					yield section
+				section = [ID, [line, ]]
+		if section:
+			yield section	
 			
 	# en: PokerStars Game #
 	# en: PokerStars Home Game #
@@ -118,11 +119,9 @@ class PokerStarsStructuredTextFile(object):
 			
 		return HcConfig.HcID(**d)
 	
+		
 	
-	def __len__(self): return len(self.sections)
-	def __getitem__(self, i): return self.sections[i]
-	def __iter__(self): return iter(self.sections)
-	def lines(self): return self.lines
+	
 
 
 
