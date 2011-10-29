@@ -1051,7 +1051,7 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 
 class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENTourney2):
 	
-	Id = HcConfig.HcID(
+	ID = HcConfig.HcID(
 			dataType=HcConfig.DataTypeHand, 
 			language=HcConfig.LanguageEN,
 			game=HcConfig.GameHoldem,
@@ -1105,7 +1105,7 @@ if __name__ == '__main__':
 	hh = HcConfig.linesFromString(hh)
 	p = PokerStarsParserHoldemENCashGame2()
 	p = PokerStarsParserHoldemENCashGameHomeGame2()
-	p = PokerStarsParserHoldemENTourney2()
+	p = PokerStarsParserHoldemENTourney1()
 	
 	eventHandler = HcConfig.HandHoldemDebug()
 	hand = p.feed(hh, eventHandler)
