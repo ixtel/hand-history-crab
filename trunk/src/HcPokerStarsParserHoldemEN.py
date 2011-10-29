@@ -121,8 +121,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parseGameHeader(self, lines, eventHandler, events):
 		if len(lines) < 2:
 			return False
-		
-		
+				
 		m = self.PatternGameHeader.match(lines[0]['chars'])
 		if m is None:
 			return False
@@ -161,6 +160,13 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		
 		lines.pop(0)
 		lines.pop(0)
+		
+		#NOTE: we have to parse ante here because PS does not report it in header
+		# we can either guess here (highest amount posted) or look it up somewhere
+		# if we are positive that ante is charged.
+		maxAnte = self.parsePlayerPostAnte(lines, eventHandler, events)
+		d['ante'] = maxAnte
+				
 		events[0] = (eventHandler.handleHandStart, d)
 		return True
 	
@@ -176,8 +182,8 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		""", re.X|re.I
 		)
 	PatternPlayerSitsOut = re.compile(
-	"""^(?P<name>.*?)\:?\s (sits\s out | is\s sitting\s out)\s*$""", 
-	re.X|re.I
+		"""^(?P<name>.*?)\:?\s (sits\s out | is\s sitting\s out)\s*$""", 
+		re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=10)
 	def parsePlayer(self, lines, eventHandler, events):
@@ -302,19 +308,24 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		"""^(?P<name>.*?)\:\sposts\s the\s ante\s [^\d\.]?(?P<amount>[\d\.]+) (\sand\s is\ all\-in)? \s*$
 		""", re.X|re.I 
 		)				
-	@HcConfig.LineParserMethod(priority=50)
+	#NOTE: we parse ante manually. see notes in parseGameHeader() 
+	##@HcConfig.LineParserMethod(priority=50)
 	def parsePlayerPostAnte(self, lines, eventHandler, events):
+		maxAnte = 0.0
 		oldLines = []
 		for line in lines:
 			m = self.PatternPlayerPostsAnte.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
 				d = m.groupdict()
-				d['amount'] = self.stringToFloat(d['amount'])
+				amount = self.stringToFloat(d['amount'])
+				maxAnte = max(msxAnte, amount)
+				d['amount'] = amount
 				events[line['index']] = (eventHandler.handlePlayerPostsAnte, d)
 		for line in oldLines:
 			lines.remove(line)
-		return True
+		##return True
+		return maxAnte
 		
 	
 	#TODO: report amount total or small/big blind?
