@@ -34,8 +34,8 @@ class PokerStarsStructuredTextFile(object):
 		return klass(lines, fileName=fileName)
 		
 	@classmethod	
-	def fromString(klass, data):
-		lines = HcConfig.linesFromString(data)
+	def fromString(klass, string):
+		lines = HcConfig.linesFromString(string)
 		return klass(lines, fileName='')	
 		
 	def __init__(self, lines, fileName=''):
@@ -48,7 +48,7 @@ class PokerStarsStructuredTextFile(object):
 		for line in self.lines:
 			chars = line['chars'].strip()
 			if not chars: continue
-			#NOTE: seen unicode BOM trailing game headers. no idea why and what to do.
+			#NOTE: seen unicode BOM_BE trailing game headers. no idea why and what to do.
 			# our implementation simply treats them as unidentified section. 
 			ID = self.sectionType((line, ))
 			if not ID and not section:
@@ -121,6 +121,12 @@ class PokerStarsStructuredTextFile(object):
 	
 		
 	
+if __name__ == '__main__':
+	
+	s = "PokerStars Game #22583075112: Tournament #124598875, $1.00+$0.20 Hold'em No Limit - Level II (15/30) - 2008/12/03 9:33:48 ET"
+	p = PokerStarsStructuredTextFile.fromString(s)
+	for ID, lines in p:
+		print ID.toString()
 	
 
 
