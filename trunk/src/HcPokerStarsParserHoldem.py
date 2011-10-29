@@ -5,10 +5,13 @@ import HcConfig
 from HcLib.PokerTools import PtSeats
 
 
-#TODO: stars did introduced currency a while ago. what to do with older hands?
+#TODO: home game tourneys, tourney sumaries, (...)
+#TODO: no idea when stars introduced currency symbols. along with local time?
+#TODO: check if home game was introduced after local time?
 #TODO:stars does not show ante in game header
 #TODO: seen player buying in posting 1) BB 2) SB 3) BB + SB have to check this
 #      and add a eventHandler to Hand() ..something like handlePlayerBuysIn(). 
+#TODO: no idea currently how to handle rake and actual hands.
 
 #************************************************************************************
 #NOTES:
@@ -51,10 +54,7 @@ CurrencyMapping = {
 		'$': HcConfig.CurrencyUSD,
 		u'€': HcConfig.CurrencyEUR,
 		u'£':  HcConfig.CurrencyGBP,
-		
 		}
-
-
 
 #************************************************************************************
 # parser implementation
@@ -908,13 +908,10 @@ class PokerStarsParserHoldemENCashGame1(PokerStarsParserHoldemENCashGame2):
 			(?P<second>\d+)
 			.+\s*$""", re.X|re.I
 		)
-	
 
 #************************************************************************************
 #
 #************************************************************************************
-#TODO: home game tourneys
-
 class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 	
 	ID = HcConfig.HcID(
@@ -1098,19 +1095,20 @@ class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENTourney2):
 			
 	
 	
-
+#************************************************************************************
+#
+#************************************************************************************
 if __name__ == '__main__':
 	
-	from oo1 import hh
-	hh = HcConfig.linesFromString(hh)
+	handHistory = '''
+	'''
+	hh = HcConfig.linesFromString(handHistory)
 	p = PokerStarsParserHoldemENCashGame2()
 	p = PokerStarsParserHoldemENCashGameHomeGame2()
 	p = PokerStarsParserHoldemENTourney1()
-	
 	eventHandler = HcConfig.HandHoldemDebug()
 	hand = p.feed(hh, eventHandler)
 	print hand
-	
 	
 	import cProfile as profile	
 	def test():
