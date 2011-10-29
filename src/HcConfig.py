@@ -272,7 +272,7 @@ class HandHoldem(EventHandlerBase):
 		"""	
 		
 
-class HandHoldemDebug(HandHoldem):
+class DebugHandler(HandHoldem):
 		
 	class FuncWrapper(object):
 		@classmethod
@@ -362,7 +362,6 @@ class LineParserBase(HcObjectBase):
 	def feed(self, lines, eventHandler):
 		myLines = [{'lineno': line['lineno'], 'chars': line['chars'], 'index': index} for index, line in enumerate(lines)]
 		events = [None]*len(lines)
-		eventHandler.handleParseStart(myLines)
 		for name in self.ParserMethodNames:
 			if not myLines:
 				break		
@@ -371,6 +370,7 @@ class LineParserBase(HcObjectBase):
 		if myLines:
 			raise ParseError('Could not parse lines:', line=myLines[0], fileName='')
 				
+		eventHandler.handleParseStart(myLines)
 		for event in events:
 			if event is not None:
 				event[0](**event[1])
