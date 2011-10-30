@@ -2,8 +2,6 @@
 
 import re
 import HcConfig
-from HcLib.PokerTools import PtSeats
-
 
 #TODO: home game tourneys, tourney sumaries, (...)
 #TODO: no idea when stars introduced currency symbols. along with local time?
@@ -216,14 +214,14 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 			playerNames.append(d['name'])
 			events[line['index']] = (eventHandler.handlePlayer, d)
 			#NOTE: we can handle only so much players, so let ParserBase deal with remainder
-			if len(players) > len(PtSeats.Seats.SeatNames):
+			if len(players) > len(HcConfig.Seats.SeatNames):
 				break
 		for line in oldLines:
 			lines.remove(line)
 				
 		# determine seat names
 		players =  players[self._seatNoButton-1:] + players[:self._seatNoButton-1]
-		for buttonOrder, seatName in enumerate(PtSeats.Seats.SeatNames[len(players)]):
+		for buttonOrder, seatName in enumerate(HcConfig.Seats.SeatNames[len(players)]):
 			player = players[buttonOrder]
 			player['seatName'] = seatName
 			player['buttonOrder'] = buttonOrder +1
