@@ -309,24 +309,18 @@ class HandHoldem(EventHandlerBase):
 		"""	
 		
 
-class DebugHandler(HandHoldem):
+class DebugHandler(object):
 		
 	class FuncWrapper(object):
-		@classmethod
-		def fromObject(klass, name, obj):
-			if inspect.ismethod(obj) and name.startswith('handle'):
-				return klass(name, obj)
-			return obj
-		def __init__(self, name, func):
+		def __init__(self, name):
 				self.name = name
-				self.func = func
 		def __call__(self, *args, **kws):
 			print self.name[6:], kws
-			self.func(*args, **kws)
-				
+	
 	def __getattribute__(self, name):
-		obj = object.__getattribute__(self, name)
-		return object.__getattribute__(self,'FuncWrapper').fromObject(name, obj)
+		if name.startswith('handle'):
+			return object.__getattribute__(self,'FuncWrapper')(name)
+		return object.__getattribute__(self, name)
 		
 #************************************************************************************
 # parser base functionality
