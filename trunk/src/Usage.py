@@ -6,6 +6,26 @@ import __init__ as Hc
 #************************************************************************************
 def runExample():
 	
+	# parse a hand history with a dedicated parser
+	data = '''
+	'''
+		
+	eventHandler = Hc.DebugHandler()
+	lines = Hc.linesFromString(data)
+	p = Hc.PokerStarsParserHoldemENCashGame2()
+	#p = Hc.PokerStarsParserHoldemENCashGameHomeGame2()
+	#p = Hc.PokerStarsParserHoldemENTourney1()
+	# ..more parsers here
+	eventHandler = Hc.DebugHandler()
+	hand = p.feed(lines, eventHandler)
+	
+
+##runExample()
+#************************************************************************************
+#
+#************************************************************************************
+def runExample():
+	
 	# parse a data of an unknown type ## paste data (hand history for example) below
 	data = '''	
 	'''
