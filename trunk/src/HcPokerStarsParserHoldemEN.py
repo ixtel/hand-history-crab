@@ -132,6 +132,8 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		
 		self._seatNoButton = int(d.pop('seatNoButton'))
 		d['site'] = self.ID['site']
+		d['gameScope'] = self.ID['gameScope']
+		d['gameContext'] = self.ID['gameContext']
 		d['game'] = GameMapping[d['game']]
 		d['gameLimit'] = GameLimitMapping[d['gameLimit'].lower()]
 		#NOTE: stars added currency to header at some point, but this is pretty useless
@@ -146,7 +148,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		d['bigBlind'] = self.stringToFloat(d['bigBlind'])
 		d['smallBlind'] = self.stringToFloat(d['smallBlind'])
 		d['maxPlayers'] = int(d['maxPlayers'])
-		d['time'] = HcConfig.timeFromDate(
+		d['time'] = HcConfig.timeToUTC(
 								(int(d.pop('year')), 
 								int(d.pop('month')), 
 								int(d.pop('day')), 
