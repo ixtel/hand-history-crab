@@ -1105,26 +1105,3 @@ class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENTourney2):
 		)
 			
 	
-	
-#************************************************************************************
-#
-#************************************************************************************
-if __name__ == '__main__':
-	
-	handHistory = '''
-	'''
-	hh = HcConfig.linesFromString(handHistory)
-	p = PokerStarsParserHoldemENCashGame2()
-	p = PokerStarsParserHoldemENCashGameHomeGame2()
-	p = PokerStarsParserHoldemENTourney1()
-	eventHandler = HcConfig.HandHoldemDebug()
-	hand = p.feed(hh, eventHandler)
-	print hand
-	
-	import cProfile as profile	
-	def test():
-		for i in xrange(20000):
-			hand = p.feed(hh, eventHandler)
-	##profile.run('test()')
-
-	
