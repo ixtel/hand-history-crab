@@ -143,10 +143,10 @@ class HcObjectBase(object):
 
 class EventHandlerBase(HcObjectBase):
 	
-	def handleParseStart(self, lines):
+	def handleParseStart(self):
 		pass
 		
-	def handleParseEnd(self, events):
+	def handleParseEnd(self):
 		pass
 
 #************************************************************************************
@@ -401,11 +401,11 @@ class LineParserBase(HcObjectBase):
 		if myLines:
 			raise ParseError('Could not parse lines:', line=myLines[0], fileName='')
 				
-		eventHandler.handleParseStart(myLines)
+		eventHandler.handleParseStart()
 		for event in events:
 			if event is not None:
 				event[0](**event[1])
-		eventHandler.handleParseEnd(events)
+		eventHandler.handleParseEnd()
 		return eventHandler
 		
 		
