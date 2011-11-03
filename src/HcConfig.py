@@ -1,5 +1,5 @@
 
-import sys, calendar, inspect
+import sys, calendar, inspect, time
 
 #************************************************************************************
 # consts
@@ -91,14 +91,18 @@ class Seats(object):
 #************************************************************************************
 # helper methods
 #************************************************************************************
-def timeFromDate(date, timeZone=TimeZoneET):
-	"""converts a date to a timestamp"""
-	t = calendar.timegm(date)
+def timeToUTC(t, timeZone=TimeZoneET):
+	"""converts a time tuple to UTC time
+	@param t: (tuple) time
+	@param timeZone: time zone to convert from
+	@return: (L{time.struct_time})
+	"""
+	s = calendar.timegm(t)
 	if timeZone == TimeZoneET:
-		t += 18000	# ET + 5 hours == UTC
+		s += 18000	# ET + 5 hours == UTC
 	else:
 		raise ValueError('timeZone "%s" not implemented' % timeZone)
-	return t
+	return time.gmtime(s)
 
 def linesFromString(string):
 	return [
