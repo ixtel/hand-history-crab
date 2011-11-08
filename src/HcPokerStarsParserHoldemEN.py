@@ -171,10 +171,12 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
+	KwPatternSummary = ' SUMMARY '
 	PatternSummary = re.compile("""^^\*\*\*\sSUMMARY\s\*\*\*\s*$""")				
 	@HcConfig.LineParserMethod(priority=2)
 	def parseSummary(self, lines, eventHandler, events):
 		for i, line in enumerate(lines):
+			if self.KwPatternSummary not in line['chars']: continue
 			m = self.PatternSummary.match(line['chars'])
 			if m is not None:
 				# drop summary, we don't need it
@@ -184,6 +186,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
+	KwPlayer = 'Seat '
 	PatternPlayer = re.compile(
 		"""^Seat\s(?P<seatNo>\d+)\:\s
 				(?P<name>.+?)\s
@@ -194,6 +197,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 				\s*$
 		""", re.X|re.I
 		)
+	KwPlayerSitsOut = ' out'
 	PatternPlayerSitsOut = re.compile(
 		"""^(?P<name>.*?)\:?\s (sits\s out | is\s sitting\s out)\s*$""", 
 		re.X|re.I
@@ -216,6 +220,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		players = []
 		playerNames = []
 		for line in lines:
+			if self.KwPlayer not in line['chars']: continue
 			m = self.PatternPlayer.match(line['chars'])
 			if m is None:
 				#NOTE: we can not break here because other formats may have other player flags
@@ -244,6 +249,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		# find all players sitting out
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerSitsOut not in line['chars']: continue
 			m = self.PatternPlayerSitsOut.match(line['chars'])
 			if m is not None:
 				d = m.groupdict()
@@ -261,6 +267,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
 	
 	#playerXYZ will be allowed to play after the button
+	KwPlayerAllowedToPlay = ' allowed '
 	PatternPlayerAllowedToPlay = re.compile(
 		"""^(?P<name>.*?)\s will\s be\s allowed\s to\s play\s .* \s*$
 		""", re.X|re.I 
@@ -269,6 +276,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerPlayerAllowedToPlay(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerAllowedToPlay not in line['chars']: continue
 			m = self.PatternPlayerAllowedToPlay.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -279,6 +287,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
 	#TODO: for some strange reason found a HH where a player posts only the small blinds
 	# guess buy in rules have changed at some point
+	KwPlayerPostsSmallBlind = ' posts small '
 	PatternPlayerPostsSmallBlind = re.compile(
 		"""^(?P<name>.*?)\:\sposts\s small\s blind\s [^\d\.]?(?P<amount>[\d\.]+) (\sand\s is\ all\-in)? \s*$
 		""", re.X|re.I 
@@ -287,6 +296,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerPostsSmallBlind(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerPostsSmallBlind not in line['chars']: continue
 			m = self.PatternPlayerPostsSmallBlind.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -298,6 +308,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 			
 	
+	KwPlayerPostsBigBlind = ' posts big '
 	PatternPlayerPostsBigBlind = re.compile(
 		"""^(?P<name>.*?)\:\sposts\s big\s blind\s [^\d\.]?(?P<amount>[\d\.]+) (\sand\s is\ all\-in)? \s*$
 		""", re.X|re.I 
@@ -306,6 +317,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerPostsBigBlind(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerPostsBigBlind not in line['chars']: continue
 			m = self.PatternPlayerPostsBigBlind.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -317,6 +329,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
+	KwPlayerPostsAnte = ' the ante '
 	PatternPlayerPostsAnte = re.compile(
 		"""^(?P<name>.*?)\:\sposts\s the\s ante\s [^\d\.]?(?P<amount>[\d\.]+) (\sand\s is\ all\-in)? \s*$
 		""", re.X|re.I 
@@ -327,6 +340,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		maxAnte = 0.0
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerPostsAnte not in line['chars']: continue
 			m = self.PatternPlayerPostsAnte.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -342,6 +356,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		
 	
 	#TODO: report amount total or small/big blind?
+	KwPlayerPostsBuyIn = ' & big '
 	PatternPlayerPostsBuyIn = re.compile(
 		"""^(?P<name>.*?)\:\sposts\s small\s &\s big\s blinds\s [^\d\.]?(?P<amount>[\d\.]+) (\sand\s is\ all\-in)? \s*$
 		""", re.X|re.I 
@@ -350,6 +365,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerPostsBuyIn(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerPostsBuyIn not in line['chars']: continue
 			m = self.PatternPlayerPostsBuyIn.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -361,10 +377,12 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 		
 	
+	KwPreFlop = ' HOLE CARDS '
 	PatternPreflop = re.compile("""^^\*\*\*\sHOLE\sCARDS\s\*\*\*$\s*$""")				
 	@HcConfig.LineParserMethod(priority=100)
 	def parsePreflop(self, lines, eventHandler, events):
 		for line in lines:
+			if self.KwPreFlop not in line['chars']: continue
 			m = self.PatternPreflop.match(line['chars'])
 			if m is not None:
 				events[line['index']] = (eventHandler.handlePreflop, {})
@@ -373,6 +391,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 		
 		
+	KwPlayerHoleCards = 'Dealt to '
 	PatternPlayerHoleCards = re.compile(
 		"^Dealt\s to\s (?P<name>.*?)\s \[(?P<card1>[23456789TJQKA][cdhs])\s(?P<card2>[23456789TJQKA][cdhs])\]\s*$", 
 		re.X|re.I
@@ -380,6 +399,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	@HcConfig.LineParserMethod(priority=150)
 	def parsePlayerPlayerHoleCards(self, lines, eventHandler, events):
 		for line in lines:
+			if self.KwPlayerHoleCards not in line['chars']: continue
 			m = self.PatternPlayerHoleCards.match(line['chars'])
 			if m is not None:
 				d = m.groupdict()
@@ -390,6 +410,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
+	KwPlayerChecks = ' checks'
 	PatternPlayerChecks = re.compile(
 		"^(?P<name>.*?)\:\s checks\s*$", re.X|re.I
 		)
@@ -397,6 +418,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerChecks(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerChecks not in line['chars']: continue
 			m = self.PatternPlayerChecks.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -406,6 +428,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
+	KwPlayerFolds = ' folds'
 	PatternPlayerFolds = re.compile(
 		"""^(?P<name>.*?)\:\s folds
 			(
@@ -421,6 +444,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerFolds(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerFolds not in line['chars']: continue
 			m = self.PatternPlayerFolds.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -435,6 +459,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 			lines.remove(line)
 		return True
 				
+	KwPlayerBets = ' bets '
 	PatternPlayerBets = re.compile(
 		"^(?P<name>.*?)\:\s bets\s [^\d\.]?(?P<amount>[\d\.]+) (\s and\s is\s all\-in)? \s*$", re.X|re.I
 		)
@@ -442,6 +467,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerBets(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerBets not in line['chars']: continue
 			m = self.PatternPlayerBets.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -453,6 +479,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 		
 	
+	KwPlayerRaises = ' raises '
 	PatternPlayerRaises = re.compile(
 		"^(?P<name>.*?)\:\s raises\s .*? to\s [^\d\.]?(?P<amount>[\d\.]+) (\s and\s is\s all\-in)?\s*$", re.X|re.I
 		)
@@ -460,6 +487,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerRaises(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerRaises not in line['chars']: continue
 			m = self.PatternPlayerRaises.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -471,6 +499,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
+	KwPlayerCalls = ' calls'
 	PatternPlayerCalls = re.compile(
 		"^(?P<name>.*?)\:\s calls\s [^\d\.]?(?P<amount>[\d\.]+) (\s and\s is\s all\-in)?\s*$", re.X|re.I
 		)
@@ -478,6 +507,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerCalls(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerCalls not in line['chars']: continue
 			m = self.PatternPlayerCalls.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -489,6 +519,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	#TODO: convert text to unicode?
+	KwPlayerChats = 'said, '
 	PatternPlayerChats = re.compile(
 		"^(?P<name>.*?)\s said,\s \"(?P<text>.*)\" \s*$", re.X|re.I
 		)
@@ -496,6 +527,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerChats(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerChats not in line['chars']: continue
 			m = self.PatternPlayerChats.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -507,6 +539,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
 	
 	#TODO: pass to hand or not?
+	KwPlayerDisconnected = ' disconnected'
 	PatternPlayerDisconnected = re.compile(
 		"^(?P<name>.*?)\s is\s disconnected \s*$", re.X|re.I
 		)
@@ -514,6 +547,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerDisconnected(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerDisconnected not in line['chars']: continue
 			m = self.PatternPlayerDisconnected.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -523,6 +557,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
 	
 	#TODO: pass to hand or not?
+	KwPlayerReconnects = ' is connected'
 	PatternPlayerReconnects = re.compile(
 		"^(?P<name>.*?)\s is\s connected \s*$", re.X|re.I
 		)
@@ -530,6 +565,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerReconnects(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerReconnects not in line['chars']: continue
 			m = self.PatternPlayerReconnects.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -539,6 +575,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
 	
 	#TODO: pass to hand or not?
+	KwPlayerTimedOut = ' timed out'
 	PatternPlayerTimedOut = re.compile(
 		"^(?P<name>.*?)\s has\s timed\s out \s*$", re.X|re.I
 		)
@@ -546,6 +583,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerTimedOut(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerTimedOut not in line['chars']: continue
 			m = self.PatternPlayerTimedOut.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -555,6 +593,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
 	
 	#TODO: pass to hand or not?
+	KwPlayerReturns = ' has returned'
 	PatternPlayerReturns = re.compile(
 		"^(?P<name>.*?)\s has\s returned \s*$", re.X|re.I
 		)
@@ -562,6 +601,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerReturns(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerReturns not in line['chars']: continue
 			m = self.PatternPlayerReturns.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -571,6 +611,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
 	
 	#TODO: pass to hand or not?
+	KwPlayerTimedOutWhileDisconnected = ' timed out '
 	PatternPlayerTimedOutWhileDisconnected = re.compile(
 		"^(?P<name>.*?)\s has\s timed\s out\s while\s (being\s)? disconnected \s*$", re.X|re.I
 		)
@@ -578,6 +619,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerTimedOutWhileDisconnected(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerTimedOutWhileDisconnected not in line['chars']: continue
 			m = self.PatternPlayerTimedOutWhileDisconnected.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -588,6 +630,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
 	#TODO: pass to hand or not? player removed for missing blinds
 	# "player" was removed from the table for failing to post
+	KwPlayerRemoved = ' removed from '
 	PatternPlayerRemoved = re.compile(
 		"^(?P<name>.*?)\s was\s removed\s from\s the\s table\s .* \s*$", re.X|re.I
 		)
@@ -595,6 +638,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerRemoved(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerRemoved not in line['chars']: continue
 			m = self.PatternPlayerRemoved.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -603,6 +647,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
+	KwFlop = ' FLOP '
 	PatternFlop = re.compile("""^\*\*\*\sFLOP\s\*\*\*\s
 	\[
 		(?P<card1>[23456789TJQKA][cdhs])\s
@@ -615,6 +660,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	@HcConfig.LineParserMethod(priority=200)
 	def parsFlop(self, lines, eventHandler, events):
 		for line in lines:
+			if self.KwFlop not in line['chars']: continue
 			m = self.PatternFlop.match(line['chars'])
 			if m is not None:
 				d = m.groupdict()
@@ -625,6 +671,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
+	KwTurn = ' TURN '
 	PatternTurn = re.compile("""^\*\*\*\sTURN\s\*\*\*\s
 	\[.+?\]\s
 	\[
@@ -635,6 +682,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	@HcConfig.LineParserMethod(priority=200)
 	def parsTurn(self, lines, eventHandler, events):
 		for line in lines:
+			if self.KwTurn not in line['chars']: continue
 			m = self.PatternTurn.match(line['chars'])
 			if m is not None:
 				d = m.groupdict()
@@ -644,6 +692,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
+	KwRiver = ' RIVER '
 	PatternRiver = re.compile("""^\*\*\*\sRIVER\s\*\*\*\s
 	\[.+?\]\s
 	\[
@@ -654,6 +703,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	@HcConfig.LineParserMethod(priority=200)
 	def parsRiver(self, lines, eventHandler, events):
 		for line in lines:
+			if self.KwRiver not in line['chars']: continue
 			m = self.PatternRiver.match(line['chars'])
 			if m is not None:
 				d = m.groupdict()
@@ -663,10 +713,12 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 		
 		
+	KwShowDown = ' SHOW DOWN '
 	PatternShowDown = re.compile("""^^\*\*\*\sSHOW\sDOWN\s\*\*\*\s*$""")				
 	@HcConfig.LineParserMethod(priority=300)
 	def parseShowDown(self, lines, eventHandler, events):
 		for line in lines:
+			if self.KwShowDown not in line['chars']: continue
 			m = self.PatternShowDown.match(line['chars'])
 			if m is not None:
 				events[line['index']] = (eventHandler.handleShowDown, {})
@@ -675,6 +727,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
+	KwPlayerShows = ' shows '
 	PatternPlayerShows = re.compile(
 		"""^(?P<name>.*?)\:\s shows\s 
 		\[
@@ -688,6 +741,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerShows(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerShows not in line['chars']: continue
 			m = self.PatternPlayerShows.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -699,6 +753,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 		
+	KwPlayerMucks = ' mucks '
 	PatternPlayerMucks = re.compile(
 		"^(?P<name>.*?)\:\s mucks\s hand\s*$", re.X|re.I
 		)
@@ -715,6 +770,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		oldLines = []
 		players = {}
 		for line in lines:
+			if self.KwPlayerMucks not in line['chars']: continue
 			m = self.PatternPlayerMucks.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -740,6 +796,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True	
 		
 		
+	KwPlayerCollected = ' collected '
 	PatternPlayerCollected = re.compile(
 		"""^(?P<name>.*?)\s collected\s [^\d\.]?(?P<amount>[\d\.]+)\s from\s 
 		(?P<pot>(
@@ -752,6 +809,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerWins(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerCollected not in line['chars']: continue
 			m = self.PatternPlayerCollected.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -780,12 +838,14 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	#TODO: stars does not put names in quotes. no idea if player names may end with spaces.
 	# if so we are in trouble here. there is no way to tell "player\s" apart from "player\s\s",
 	# even if we keep a lokkup of player names. hope stars has done the right thing.
+	KwUncalledBet = ' returned to '
 	PatternUncalledBet = re.compile(
 		"^Uncalled\s bet\s \([^\d\.]?(?P<amount>[\d\.]+)\)\s returned\s to\s (?P<name>.*?) \s*$", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=400)
 	def parseUncalledBet(self, lines, eventHandler, events):
 		for line in lines:
+			if self.KwUncalledBet not in line['chars']: continue
 			m = self.PatternUncalledBet.match(line['chars'])
 			if m is not None:
 				d = m.groupdict()
@@ -797,6 +857,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 		
 	
+	KwPlayerDoesNotShowHand = " doesn't show "
 	PatternPlayerDoesNotShowHand = re.compile(
 		"""^(?P<name>.*?)\:\s doesn\'t\s show\s  hand \s*$
 		""", re.X|re.I
@@ -804,6 +865,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	@HcConfig.LineParserMethod(priority=450)
 	def parsePlayerDoesNotShowHand(self, lines, eventHandler, events):
 		for line in lines:
+			if self.KwPlayerDoesNotShowHand not in line['chars']: continue
 			m = self.PatternPlayerDoesNotShowHand.match(line['chars'])
 			if m is not None:
 				lines.remove(line)
@@ -812,6 +874,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 		
 	
+	KwPlayerLeavesTable = ' leaves '
 	PatternPlayerLeavesTable = re.compile(
 		"""^(?P<name>.*?)\s leaves\s the\s table \s*$
 		""", re.X|re.I
@@ -820,6 +883,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerLeavesTable(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerLeavesTable not in line['chars']: continue
 			m = self.PatternPlayerLeavesTable.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -828,6 +892,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True	
 	
 	
+	KwPlayerJoinsTable = ' joins '
 	PatternPlayerJoinsTable = re.compile(
 		"""^(?P<name>.*?)\s joins\s the\s table\s at\s seat\s \#\d+ \s*$
 		""", re.X|re.I
@@ -836,6 +901,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def parsePlayerJoinsTable(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerJoinsTable not in line['chars']: continue
 			m = self.PatternPlayerJoinsTable.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -1007,6 +1073,7 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 		
 	#TODO: pass to hand? extract more lines?
 	# "player" finished the tournament in 2nd place and received $0.00
+	KwPlayerFinishesTourney = ' finished '
 	PatternPlayerFinishesTourney = re.compile(
 		"^(?P<name>.*?)\s finished\s the\s tournament\s in\s .* \s*$", re.X|re.I
 		)
@@ -1014,6 +1081,7 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 	def parsePlayerFinishesTourney(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerFinishesTourney not in line['chars']: continue
 			m = self.PatternPlayerFinishesTourney.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -1024,6 +1092,7 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 		
 	#TODO: pass to hand? extract more lines?
 	# "player" wins the tournament and receives $0.00 - congratulations!
+	KwPlayerWinsTourney = ' wins '
 	PatternPlayerWinsTourney = re.compile(
 		"^(?P<name>.*?)\s wins\s the\s tournament\s .* \s*$", re.X|re.I
 		)
@@ -1031,6 +1100,7 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 	def parsePlayerWinsTourney(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerWinsTourney not in line['chars']: continue
 			m = self.PatternPlayerWinsTourney.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -1040,6 +1110,7 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 		
 	# "player" wins the $0.00 bounty for eliminating "player"
 	#TODO: pass to hand? extract more lines?
+	KwPlayerWinsBounty = ' bounty '
 	PatternPlayerWinsBounty = re.compile(
 		"^(?P<name>.*?)\s wins\s the\s [^\d\.]?(?P<amount>[\d\.]+)\s bounty\s .+ \s*$", re.X|re.I
 		)
@@ -1047,6 +1118,7 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 	def parsePlayerWinsBounty(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerWinsBounty not in line['chars']: continue
 			m = self.PatternPlayerWinsBounty.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
@@ -1056,6 +1128,7 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 	 	
 	# "player" (0000 in chips) out of hand (moved from another table into small blind)
 	#TODO: pass to hand? extract more lines?
+	KwPlayerOutOfHand = ' out of '
 	PatternPlayerOutOfHand = re.compile(
 		"^(?P<name>.*?)\s \([\d]+\s in\s chips\)\s out\s of\s hand\s .+  \s*$", re.X|re.I
 		)
@@ -1063,6 +1136,7 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 	def parsePlayerOutOfHand(self, lines, eventHandler, events):
 		oldLines = []
 		for line in lines:
+			if self.KwPlayerOutOfHand not in line['chars']: continue
 			m = self.PatternPlayerOutOfHand.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
