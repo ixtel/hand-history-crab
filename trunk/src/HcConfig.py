@@ -29,6 +29,7 @@ StreetFlop = 'Flop'
 StreetTurn = 'Turn'
 StreetRiver = 'River'
 StreetShowDown = 'ShowDown'
+StreetSummary = 'Summary'
 
 GameNone = ''
 GameHoldem = 'Holdem'
@@ -106,7 +107,7 @@ def timeToUTC(t, timeZone=TimeZoneET):
 
 def linesFromString(string):
 	return [
-		{'lineno': lineno, 'chars': line} for 
+		(lineno, line) for 
 		lineno, line in 
 		enumerate(string.replace('\r\n', '\n').replace('\r','\n').split('\n'))
 		]
@@ -335,8 +336,8 @@ class ParseError(Exception):
 			self.fileName = fileName
 			err = msg + '\n'
 			err += 'in: %s\n' % self.fileName
-			err += 'at lineno: %s\n' % self.line['lineno']
-			err += self.line['chars']
+			err += 'at lineno: %s\n' % self.line[0]
+			err += self.line[1]
 			Exception.__init__(self, err)
 
 
@@ -345,12 +346,8 @@ class LineParserMethod(object):
 	def __init__(self, priority=sys.maxint):
 		self.priority = priority
 	def __call__(self, func):
-		def parseMethod(*args, **kws):
-			return func(*args, **kws)
-		parseMethod.klass = self.__class__
-		parseMethod.priority = self.priority
-		return parseMethod
-
+		func.priority = self.priority
+		return func
 
 class LineParserMeta(type):
 	"""records all parser classes to global (list) Parsers + gathers all ParserMethods and dumps 
@@ -383,24 +380,25 @@ class LineParserBase(HcObjectBase):
 	def __init__(self):
 		# gather all parser methods
 		#TODO: maybe we can delay parser setup to optimize for speed?	
-		ParserMethodNames = []
+		ParserMethods = []
 		for name in dir(self):
 			obj = getattr(self, name)
-			if getattr(obj, 'klass', None) is LineParserMethod:
-				ParserMethodNames.append((obj.priority, name))
-		ParserMethodNames.sort()
-		self.ParserMethodNames = [i[1] for i in ParserMethodNames]
-							
-	def feed(self, lines, eventHandler):
-		myLines = [{'lineno': line['lineno'], 'chars': line['chars'], 'index': index} for index, line in enumerate(lines)]
+			if getattr(obj, 'priority', None) is not None:
+				ParserMethods.append((obj.priority, obj))
+		ParserMethods.sort()
+		self.ParserMethods = [i[1] for i in ParserMethods]
+									
+	def feed(self, lines, eventHandler, fileName=''):
+		myLines = [(lineno, chars, index) for index, (lineno, chars) in enumerate(lines)]
 		events = [None]*len(lines)
-		for name in self.ParserMethodNames:
+		state = {}
+		for method in self.ParserMethods:
 			if not myLines:
 				break		
-			if not getattr(self, name)(myLines, eventHandler, events):
+			if not method(myLines, eventHandler, events, state):
 				break
 		if myLines:
-			raise ParseError('Could not parse lines:', line=myLines[0], fileName='')
+			raise ParseError('Could not parse lines:', line=myLines[0], fileName=fileName)
 				
 		eventHandler.handleParseStart()
 		for event in events:

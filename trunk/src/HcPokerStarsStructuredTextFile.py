@@ -49,9 +49,9 @@ class PokerStarsStructuredTextFile(object):
 	#TODO: file looks like a HandHistory to us but is 10gigs of garbage? 
 	def __iter__(self):
 		ID = HcConfig.HcID
-		section = []
+		section = ()
 		for line in self.lines:
-			if not line['chars'].strip(): continue
+			if not line[1].strip(): continue
 			#NOTE: HcConfig.HcID() objects are rather expensive, so we work on a dict here
 			kws = self.sectionType((line, ))
 			if not kws:
@@ -59,11 +59,11 @@ class PokerStarsStructuredTextFile(object):
 					section[1].append(line)
 					continue
 				else:
-					section = [ID(), [line, ]]
+					section = ID(), [line, ]
 			else:
 				if section:
 					yield section
-				section = [ID(**kws), [line, ]]
+				section = ID(**kws), [line, ]
 		if section:
 			yield section	
 			
@@ -75,7 +75,7 @@ class PokerStarsStructuredTextFile(object):
 	# ...
 	# PokerStars Game #1234567890: Tournament #1234567890, Freeroll  Hold'em No Limit
 	def sectionType(self, lines):
-		header = lines[0]['chars']
+		header = lines[0][1]
 		kws = {}
 		
 		if header.startswith('PokerStars '):
