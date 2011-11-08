@@ -48,20 +48,22 @@ class PokerStarsStructuredTextFile(object):
 			
 	#TODO: file looks like a HandHistory to us but is 10gigs of garbage? 
 	def __iter__(self):
+		ID = HcConfig.HcID
 		section = []
 		for line in self.lines:
-			chars = line['chars'].strip()
-			if not chars: continue
-			ID = self.sectionType((line, ))
-			if not ID and not section:
-				section = [HcConfig.HcID(), [line, ]]
-			elif not ID:
-				section[1].append(line)
-				continue
+			if not line['chars'].strip(): continue
+			#NOTE: HcConfig.HcID() objects are rather expensive, so we work on a dict here
+			kws = self.sectionType((line, ))
+			if not kws:
+				if section:
+					section[1].append(line)
+					continue
+				else:
+					section = [ID(), [line, ]]
 			else:
 				if section:
 					yield section
-				section = [ID, [line, ]]
+				section = [ID(**kws), [line, ]]
 		if section:
 			yield section	
 			
@@ -74,52 +76,52 @@ class PokerStarsStructuredTextFile(object):
 	# PokerStars Game #1234567890: Tournament #1234567890, Freeroll  Hold'em No Limit
 	def sectionType(self, lines):
 		header = lines[0]['chars']
-		d = {}
+		kws = {}
 		
 		if header.startswith('PokerStars '):
 			
-			d['site'] = HcConfig.SitePokerStars
+			kws['site'] = HcConfig.SitePokerStars
 			if ' Home Game #' in header:
-				d['gameScope'] = HcConfig.GameScopeHomeGame
+				kws['gameScope'] = HcConfig.GameScopeHomeGame
 			elif ' Game #' in header:
-				d['gameScope'] = HcConfig.GameScopePublic
+				kws['gameScope'] = HcConfig.GameScopePublic
 			else:
-				return HcConfig.HcID(**d)
+				return kws
 			
 			if " Hold'em " in header:
-				d['game'] = HcConfig.GameHoldem
+				kws['game'] = HcConfig.GameHoldem
 			else:
-				return HcConfig.HcID(**d)
+				return d
 			
-			d['dataType'] = HcConfig.DataTypeHand
-			d['language'] = HcConfig.LanguageEN
+			kws['dataType'] = HcConfig.DataTypeHand
+			kws['language'] = HcConfig.LanguageEN
 			
 			if ' Tournament ' in header:
-				d['gameContext'] = HcConfig.GameContextTourney
+				kws['gameContext'] = HcConfig.GameContextTourney
 				if ' Freeroll ' in header:
 					#TODO: freerolls are currently not unsupported
-					return HcConfig.HcID(**d)
+					return kws
 				elif 'FPP ' in header:
 					#TODO: FPP tourneys are currently not supported
-					return HcConfig.HcID(**d)
+					return kws
 			else:
 				if ' 8-Game ' in header:
 					#TODO: 8 game is currently not supported
-					return HcConfig.HcID(**d)
+					return kws
 				elif ' HORSE ' in header:
 					#TODO: 8-game is currently not supported
-					return HcConfig.HcID(**d)
+					return kws
 				elif '  Mixed ' in header:
 					#TODO: mixed games is currently not supported
-					return HcConfig.HcID(**d)
-				d['gameContext'] = HcConfig.GameContextCashGame
+					return kws
+				kws['gameContext'] = HcConfig.GameContextCashGame
 					
 			if '[' in header:
-				d['version'] = '2'
+				kws['version'] = '2'
 			else:
-				d['version'] = '1'
+				kws['version'] = '1'
 			
-		return HcConfig.HcID(**d)
+		return kws
 		
 #************************************************************************************
 #

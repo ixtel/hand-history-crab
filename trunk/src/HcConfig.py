@@ -121,6 +121,7 @@ class HcID(object):
 	def __init__(self, **kws):
 		self._kwList = tuple(sorted(kws.items()))
 		self._kws = kws
+		self._hasKws = bool(self._kws)
 	def contains(self, **kws):
 		for name, value in kws.items():
 			if name not in self._kws:
@@ -131,7 +132,7 @@ class HcID(object):
 	def __eq__(self, other): return self._kwList == other._kwList
 	def __ne__(self, other): return not self.__eq__(other)
 	def __hash__(self): return hash(self._kwList)
-	def __nonzero__(self): return bool(self._kws)
+	def __nonzero__(self): return self._hasKws
 	def __getitem__(self, name):	return self._kws[name]
 	def toString(self):
 		return '/'.join(['%s:%s' % (field, value) for field, value in self._kwList])
