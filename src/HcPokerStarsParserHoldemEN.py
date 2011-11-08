@@ -171,6 +171,19 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
+	PatternSummary = re.compile("""^^\*\*\*\sSUMMARY\s\*\*\*\s*$""")				
+	@HcConfig.LineParserMethod(priority=2)
+	def parseSummary(self, lines, eventHandler, events):
+		for i, line in enumerate(lines):
+			m = self.PatternSummary.match(line['chars'])
+			if m is not None:
+				# drop summary, we don't need it
+				while i < len(lines):
+					lines.pop(i)
+				break	
+		return True
+	
+	
 	PatternPlayer = re.compile(
 		"""^Seat\s(?P<seatNo>\d+)\:\s
 				(?P<name>.+?)\s
@@ -832,19 +845,6 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
 		
 	# clean up events
-		
-	PatternSummary = re.compile("""^^\*\*\*\sSUMMARY\s\*\*\*\s*$""")				
-	@HcConfig.LineParserMethod(priority=9998)
-	def parseSummary(self, lines, eventHandler, events):
-		for i, line in enumerate(lines):
-			m = self.PatternSummary.match(line['chars'])
-			if m is not None:
-				# drop summary, we don't need it
-				while i < len(lines):
-					lines.pop(i)
-				break	
-		return True
-	
 		
 	PatternEmptyLine = re.compile('^\s*$')
 	@HcConfig.LineParserMethod(priority=9999)
