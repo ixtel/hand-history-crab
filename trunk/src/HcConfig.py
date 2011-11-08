@@ -254,7 +254,7 @@ class HandHoldem(EventHandlerBase):
 		@param name: (str) player name
 		"""
 		
-	def handlePlayerFolds(self, name=''):
+	def handlePlayerFolds(self, name='', cards=None):
 		"""
 		@param name: (str) player name
 		"""

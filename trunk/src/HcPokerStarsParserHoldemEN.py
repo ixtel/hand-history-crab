@@ -394,7 +394,15 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
 	
 	PatternPlayerFolds = re.compile(
-		"^(?P<name>.*?)\:\s folds\s*$", re.X|re.I
+		"""^(?P<name>.*?)\:\s folds
+			(
+				\s
+				\[ 
+					(?P<card1>[23456789TJQKA][cdhs]) 
+					( \s(?P<card2>[23456789TJQKA][cdhs]) )?
+				\]
+			)?
+			\s*$""", re.X|re.I
 		)
 	@HcConfig.LineParserMethod(priority=160)
 	def parsePlayerFolds(self, lines, eventHandler, events):
@@ -403,12 +411,17 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 			m = self.PatternPlayerFolds.match(line['chars'])
 			if m is not None:
 				oldLines.append(line)
-				events[line['index']] = (eventHandler.handlePlayerFolds, m.groupdict())
+				d = m.groupdict()
+				card1, card2 = d.pop('card1'), d.pop('card2')
+				if card1 is not None and card2 is not None:
+					d['cards'] = (card1, card2)
+				elif card1 is not None:
+					d['cards'] = (card1,)
+				events[line['index']] = (eventHandler.handlePlayerFolds, d)
 		for line in oldLines:
 			lines.remove(line)
 		return True
 				
-	
 	PatternPlayerBets = re.compile(
 		"^(?P<name>.*?)\:\s bets\s [^\d\.]?(?P<amount>[\d\.]+) (\s and\s is\s all\-in)? \s*$", re.X|re.I
 		)
