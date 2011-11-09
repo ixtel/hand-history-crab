@@ -1,4 +1,4 @@
- # -*- coding: UTF-8 -*-
+# -*- coding: UTF-8 -*-
 
 import re
 import HcConfig
@@ -83,6 +83,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
 	# PokerStars Home Game #0123456789: {HomeGameName}  Hold'em No Limit ($0.00/$0.00 USD) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
 	# PokerStars Home Game #0123456789: Hold'em No Limit ($0.00/$0.00 USD) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
+	
 	PatternGameHeader = re.compile(
 		"""^PokerStars\s Game \s
 			\#(?P<handID>\d+)\:\s+
@@ -107,6 +108,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 			\]\s*$
 		""", re.X|re.I
 		)
+	
 	PatternTableHeader = re.compile(
 		"""^Table\s \'(?P<tableName>[^\']+)\'\s
 			(?P<maxPlayers>\d+)\-max\s
@@ -115,7 +117,6 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 			\s*$
 		""", re.X|re.I
 		)
-	
 	@HcConfig.LineParserMethod(priority=2)
 	def parseGameHeader(self, lines, eventHandler, events, state):
 		if len(lines) < 2:
@@ -131,7 +132,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 			return False
 		d.update(m.groupdict())
 		
-		self._seatNoButton = int(d.pop('seatNoButton'))
+		d['seatNoButton'] = int(d['seatNoButton'])
 		d['site'] = self.ID['site']
 		d['gameScope'] = self.ID['gameScope']
 		d['gameContext'] = self.ID['gameContext']
@@ -216,31 +217,19 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 				\s*$
 		""", re.X|re.I
 		)
-	KwPlayerSitsOut = ' out'
-	PatternPlayerSitsOut = re.compile(
-		"""^(?P<name>.*?)\:?\s (sits\s out | is\s sitting\s out)\s*$""", 
-		re.X|re.I
-		)
 	@HcConfig.LineParserMethod(priority=10)
 	def parsePlayer(self, lines, eventHandler, events, state):
 		
-		# cash game: stars does not report a player sitting out initially (seatNo, stackSize)
-		# so we have to check for players sitting out that are not seated.
-		# 1) check if we are parsing a cash game hand (events[0])
-		# 2) find all players seated
-		# 3) find all sitting out events
-		# 4) report as player all players seated + sitting out players that are not seated
-		#
-		# stars uses "sits out" and "is sitting out" in this spot. no idea
-		# what the distintion is about.
-		
+		# cash game: stars does not report a player sitting out until the blinds are
+		# posted. in this case we have a sitting out event but no seat number / no stack info
+		# so best ignore these players.
+				
 		# find players
 		oldLines = []
-		players = []
 		playerNames = []
+		state['playerNames'] = playerNames
 		for i, line in enumerate(lines):
 			if line[2] >= state[HcConfig.StreetPreflop]: break
-					
 			if self.KwPlayer not in line[1]: continue
 			m = self.PatternPlayer.match(line[1])
 			if m is None:
@@ -251,44 +240,13 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 			d['seatNo'] = int(d['seatNo'])
 			d['stack'] = self.stringToFloat(d['stack'])
 			d['sitsOut'] = bool(d['sitsOut'])
-			players.append(d)
 			playerNames.append(d['name'])
 			events[line[2]] = (eventHandler.handlePlayer, d)
-			#NOTE: we can handle only so much players, so let ParserBase deal with remainder
-			if len(players) > len(HcConfig.Seats.SeatNames):
-				break
-		for i in oldLines:
-			del lines[i]
-				
-		# determine seat names
-		players =  players[self._seatNoButton-1:] + players[:self._seatNoButton-1]
-		for buttonOrder, seatName in enumerate(HcConfig.Seats.SeatNames[len(players)]):
-			player = players[buttonOrder]
-			player['seatName'] = seatName
-			player['buttonOrder'] = buttonOrder +1
-				
-		# find all players sitting out
-		oldLines = []
-		for i, line in enumerate(lines):
-			if line[2] >= state[HcConfig.StreetPreflop]: break
-			
-			if self.KwPlayerSitsOut not in line[1]: continue
-			m = self.PatternPlayerSitsOut.match(line[1])
-			if m is not None:
-				d = m.groupdict()
-				if d['name'] not in playerNames:
-					# assume cash game (see notes above)
-					d['sitsOut'] = True
-					events[line[2]] = (eventHandler.handlePlayer, d)
-				else:
-					#TODO: report to hand?
-					events[line[2]] = (eventHandler.handlePlayerSitsOut, d)
-				oldLines.insert(0, i)
 		for i in oldLines:
 			del lines[i]
 		return True
-	
-	
+					
+		
 	#playerXYZ will be allowed to play after the button
 	KwPlayerAllowedToPlay = ' allowed '
 	PatternPlayerAllowedToPlay = re.compile(
@@ -320,7 +278,6 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		oldLines = []
 		for i, line in enumerate(lines):
 			if line[2] >= state[HcConfig.StreetPreflop]: break
-			
 			if self.KwPlayerPostsSmallBlind not in line[1]: continue
 			m = self.PatternPlayerPostsSmallBlind.match(line[1])
 			if m is not None:
@@ -343,7 +300,6 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		oldLines = []
 		for i, line in enumerate(lines):
 			if line[2] >= state[HcConfig.StreetPreflop]: break
-			
 			if self.KwPlayerPostsBigBlind not in line[1]: continue
 			m = self.PatternPlayerPostsBigBlind.match(line[1])
 			if m is not None:
@@ -355,12 +311,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 			del lines[i]
 		return True
 	
-	###################################
-	###################################
-	###################################
-	###################################
-	
-	
+		
 	KwPlayerPostsAnte = ' the ante '
 	PatternPlayerPostsAnte = re.compile(
 		"""^(?P<name>.*?)\:\sposts\s the\s ante\s [^\d\.]?(?P<amount>[\d\.]+) (\sand\s is\ all\-in)? \s*$
@@ -373,7 +324,6 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		oldLines = []
 		for i, line in enumerate(lines):
 			if line[2] >= state[HcConfig.StreetPreflop]: break
-			
 			if self.KwPlayerPostsAnte not in line[1]: continue
 			m = self.PatternPlayerPostsAnte.match(line[1])
 			if m is not None:
@@ -400,7 +350,6 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		oldLines = []
 		for i, line in enumerate(lines):
 			if line[2] >= state[HcConfig.StreetPreflop]: break
-			
 			if self.KwPlayerPostsBuyIn not in line[1]: continue
 			m = self.PatternPlayerPostsBuyIn.match(line[1])
 			if m is not None:
@@ -421,7 +370,6 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	@HcConfig.LineParserMethod(priority=150)
 	def parsePlayerPlayerHoleCards(self, lines, eventHandler, events, state):
 		for i, line in enumerate(lines):
-					
 			if self.KwPlayerHoleCards not in line[1]: continue
 			m = self.PatternPlayerHoleCards.match(line[1])
 			if m is not None:
@@ -557,6 +505,31 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 				oldLines.insert(0, i)
 				d = m.groupdict()
 				events[line[2]] = (eventHandler.handlePlayerChats, d)
+		for i in oldLines:
+			del lines[i]
+		return True
+	
+		
+	KwPlayerSitsOut = ' out'
+	PatternPlayerSitsOut = re.compile(
+		"""^(?P<name>.*?)\:?\s (sits\s out | is\s sitting\s out)\s*$""", 
+		re.X|re.I
+		)
+	@HcConfig.LineParserMethod(priority=159)
+	def parsePlayersSitsOut(self, lines, eventHandler, events, state):					
+		# find all players sitting out
+		oldLines = []
+		for i, line in enumerate(lines):
+			if self.KwPlayerSitsOut not in line[1]: continue
+			m = self.PatternPlayerSitsOut.match(line[1])
+			if m is not None:
+				oldLines.insert(0, i)
+				d = m.groupdict()
+				if d['name'] not in state['playerNames']:
+					# assume cash game (see notes in parsePlayer() )
+					continue
+				else:
+					events[line[2]] = (eventHandler.handlePlayerSitsOut, d)
 		for i in oldLines:
 			del lines[i]
 		return True
