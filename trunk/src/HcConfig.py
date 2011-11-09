@@ -349,7 +349,6 @@ class LineParserBase(HcObjectBase):
 	
 	def __init__(self):
 		# gather all parser methods
-		#TODO: maybe we can delay parser setup to optimize for speed?	
 		ParserMethods = []
 		for name in dir(self):
 			obj = getattr(self, name)
