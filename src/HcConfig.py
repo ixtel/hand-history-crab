@@ -160,7 +160,7 @@ class HandHoldem(EventHandlerBase):
 			):
 		""""""
 		
-	def handlePlayer(self, name='', stack=0.0, seatNo=0, seatName='', buttonOrder=0, sitsOut=False):
+	def handlePlayer(self, name='', stack=0.0, seatNo=0, sitsOut=False):
 		"""
 		@param name: (str) player name
 		@param seatNo: (int) 1 based seat number
