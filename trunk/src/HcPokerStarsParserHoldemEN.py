@@ -655,7 +655,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	
 	)				
 	@HcConfig.LineParserMethod(priority=200)
-	def parsFlop(self, lines, eventHandler, events, state):
+	def parseFlop(self, lines, eventHandler, events, state):
 		for i, line in enumerate(lines):
 			if self.KwFlop not in line[1]: continue
 			m = self.PatternFlop.match(line[1])
@@ -677,7 +677,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	\s*$""", re.X|re.I
 	)				
 	@HcConfig.LineParserMethod(priority=200)
-	def parsTurn(self, lines, eventHandler, events, state):
+	def parseTurn(self, lines, eventHandler, events, state):
 		for i, line in enumerate(lines):
 			if self.KwTurn not in line[1]: continue
 			m = self.PatternTurn.match(line[1])
@@ -698,7 +698,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	\s*$""", re.X|re.I
 	)				
 	@HcConfig.LineParserMethod(priority=200)
-	def parsRiver(self, lines, eventHandler, events, state):
+	def parseRiver(self, lines, eventHandler, events, state):
 		for i, line in enumerate(lines):
 			if self.KwRiver not in line[1]: continue
 			m = self.PatternRiver.match(line[1])
