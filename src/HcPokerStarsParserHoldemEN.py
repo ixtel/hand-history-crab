@@ -247,6 +247,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 					
 		
+	#TODO: report event?
 	#playerXYZ will be allowed to play after the button
 	KwPlayerAllowedToPlay = ' allowed '
 	PatternPlayerAllowedToPlay = re.compile(
@@ -535,7 +536,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
-	#TODO: pass to hand or not?
+	#TODO: report event?
 	KwPlayerDisconnected = ' disconnected'
 	PatternPlayerDisconnected = re.compile(
 		"^(?P<name>.*?)\s is\s disconnected \s*$", re.X|re.I
@@ -553,7 +554,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
-	#TODO: pass to hand or not?
+	#TODO: report event?
 	KwPlayerReconnects = ' is connected'
 	PatternPlayerReconnects = re.compile(
 		"^(?P<name>.*?)\s is\s connected \s*$", re.X|re.I
@@ -571,7 +572,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
-	#TODO: pass to hand or not?
+	#TODO: report event?
 	KwPlayerTimedOut = ' timed out'
 	PatternPlayerTimedOut = re.compile(
 		"^(?P<name>.*?)\s has\s timed\s out \s*$", re.X|re.I
@@ -589,7 +590,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
-	#TODO: pass to hand or not?
+	#TODO: report event?
 	KwPlayerReturns = ' has returned'
 	PatternPlayerReturns = re.compile(
 		"^(?P<name>.*?)\s has\s returned \s*$", re.X|re.I
@@ -607,7 +608,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
-	#TODO: pass to hand or not?
+	#TODO: report event?
 	KwPlayerTimedOutWhileDisconnected = ' timed out '
 	PatternPlayerTimedOutWhileDisconnected = re.compile(
 		"^(?P<name>.*?)\s has\s timed\s out\s while\s (being\s)? disconnected \s*$", re.X|re.I
@@ -625,8 +626,8 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 	
 	
-	#TODO: pass to hand or not? player removed for missing blinds
-	# "player" was removed from the table for failing to post
+	#TODO: report event?
+	# player removed for missing blinds
 	KwPlayerRemoved = ' removed from '
 	PatternPlayerRemoved = re.compile(
 		"^(?P<name>.*?)\s was\s removed\s from\s the\s table\s .* \s*$", re.X|re.I
@@ -854,6 +855,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 		
 	
+	#TODO: report event?
 	KwPlayerDoesNotShowHand = " doesn't show "
 	PatternPlayerDoesNotShowHand = re.compile(
 		"""^(?P<name>.*?)\:\s doesn\'t\s show\s  hand \s*$
@@ -871,6 +873,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 		
 	
+	#TODO: report event?
 	KwPlayerLeavesTable = ' leaves '
 	PatternPlayerLeavesTable = re.compile(
 		"""^(?P<name>.*?)\s leaves\s the\s table \s*$
@@ -889,6 +892,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True	
 	
 	
+	#TODO: report event?
 	KwPlayerJoinsTable = ' joins '
 	PatternPlayerJoinsTable = re.compile(
 		"""^(?P<name>.*?)\s joins\s the\s table\s at\s seat\s \#\d+ \s*$
@@ -1068,7 +1072,7 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 		return True
 		
 		
-	#TODO: pass to hand? extract more lines?
+	#TODO: report event?
 	# "player" finished the tournament in 2nd place and received $0.00
 	KwPlayerFinishesTourney = ' finished '
 	PatternPlayerFinishesTourney = re.compile(
@@ -1087,7 +1091,7 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 		return True
 	
 		
-	#TODO: pass to hand? extract more lines?
+	#TODO: report event?
 	# "player" wins the tournament and receives $0.00 - congratulations!
 	KwPlayerWinsTourney = ' wins '
 	PatternPlayerWinsTourney = re.compile(
@@ -1105,8 +1109,9 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 			del lines[i]
 		return True
 		
+	
+	#TODO: report event?
 	# "player" wins the $0.00 bounty for eliminating "player"
-	#TODO: pass to hand? extract more lines?
 	KwPlayerWinsBounty = ' bounty '
 	PatternPlayerWinsBounty = re.compile(
 		"^(?P<name>.*?)\s wins\s the\s [^\d\.]?(?P<amount>[\d\.]+)\s bounty\s .+ \s*$", re.X|re.I
@@ -1123,8 +1128,8 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 			del lines[i]
 		return True
 	 	
+	#TODO: report event?
 	# "player" (0000 in chips) out of hand (moved from another table into small blind)
-	#TODO: pass to hand? extract more lines?
 	KwPlayerOutOfHand = ' out of '
 	PatternPlayerOutOfHand = re.compile(
 		"^(?P<name>.*?)\s \([\d]+\s in\s chips\)\s out\s of\s hand\s .+  \s*$", re.X|re.I
