@@ -311,7 +311,7 @@ class ParseError(Exception):
 			Exception.__init__(self, err)
 
 
-class LineParserMethod(object):
+class lineParserMethod(object):
 	"""decorator to mark a method as line parser method and assign a priority to it"""
 	def __init__(self, priority=sys.maxint):
 		self.priority = priority
@@ -332,7 +332,7 @@ class LineParserMeta(type):
 
 class LineParserBase(HcObjectBase):
 	"""base class for line parsers
-	decorate any methods intendet to take part in the parsing process as LineParserMethod(). 
+	decorate any methods intendet to take part in the parsing process as lineParserMethod(). 
 	the	methods will be called with three arguments:
 	
 	lines: a list of lines to be parsed
