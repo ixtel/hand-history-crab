@@ -53,11 +53,10 @@ class PokerStarsStructuredTextFile(object):
 		for line in self.lines:
 			if not line[1].strip(): continue
 			#NOTE: HcConfig.HcID() objects are rather expensive, so we work on a dict here
-			kws = self.sectionType((line, ))
+			kws = self.headerType(line[1])
 			if not kws:
 				if section:
 					section[1].append(line)
-					continue
 				else:
 					section = ID(), [line, ]
 			else:
@@ -74,8 +73,7 @@ class PokerStarsStructuredTextFile(object):
 	# es: Juego de PokerStars #
 	# ...
 	# PokerStars Game #1234567890: Tournament #1234567890, Freeroll  Hold'em No Limit
-	def sectionType(self, lines):
-		header = lines[0][1]
+	def headerType(self, header):
 		kws = {}
 		
 		if header.startswith('PokerStars '):
