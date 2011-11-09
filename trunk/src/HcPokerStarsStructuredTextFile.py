@@ -91,7 +91,7 @@ class PokerStarsStructuredTextFile(object):
 			if " Hold'em " in header:
 				kws['game'] = HcConfig.GameHoldem
 			else:
-				return d
+				return kws
 			
 			kws['dataType'] = HcConfig.DataTypeHand
 			kws['language'] = HcConfig.LanguageEN
