@@ -331,7 +331,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 				oldLines.insert(0, i)
 				d = m.groupdict()
 				amount = self.stringToFloat(d['amount'])
-				maxAnte = max(msxAnte, amount)
+				maxAnte = max(maxAnte, amount)
 				d['amount'] = amount
 				events[line[2]] = (eventHandler.handlePlayerPostsAnte, d)
 		for i in oldLines:
