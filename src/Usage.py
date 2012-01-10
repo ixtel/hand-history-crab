@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 """example usage cases for the package"""
 
 import __init__ as Hc
@@ -9,7 +10,6 @@ def runExample():
 	# parse a hand history with a dedicated parser
 	data = '''
 	'''
-		
 	eventHandler = Hc.DebugHandler()
 	lines = Hc.linesFromString(data)
 	p = Hc.PokerStarsParserHoldemENCashGame2()
@@ -83,7 +83,7 @@ def runExample():
 				parser = parsers.get(ID, None)
 				if parser is None: 
 					continue
-				parser.feed(lines, myEventHandler)
+				parser.feed(lines, myEventHandler, fileName=fileName)
 				
 	# print out results
 	players = myEventHandler.Players.items()
@@ -92,10 +92,54 @@ def runExample():
 		if nHands > 50:
 			print '%s: %s' % (name, nHands)
 			
-	
+		
 ##runExample()
 #************************************************************************************
+def runExample():
 	
+	import os, time
+	
+	# count hands in directory tree (poor mans profile-the-package)
+	#WARNING: this may take some time to complete!
+	directory = '/home/me/Scr/Shell/HandHistories/New'
+	
+	# set up a dict of parsers for later lookup
+	parsers = {}
+	for parser in Hc.Parsers.values():
+		if parser.ID.contains(
+				dataType=Hc.DataTypeHand, 
+				game= Hc.GameHoldem,
+				gameContext=Hc.GameContextCashGame,
+				language=Hc.LanguageEN,
+				):
+			parsers[parser.ID] = parser()
+			
+	# set up a custom event handler
+	class MyEventHandler(Hc.HandHoldem):
+		pass				
+	
+	# run over directory
+	myEventHandler = MyEventHandler()
+	t0 = time.time()
+	nHands = 0
+	for root, dirs, files in os.walk(directory):
+		for name in files:
+			fileName = os.path.join(root, name)
+			f = Hc.PokerStarsStructuredTextFile.fromFileName(fileName)
+			for ID, lines in f:
+				# structured text file returns an ID we can lookup to see if we have a matching parser
+				parser = parsers.get(ID, None)
+				if parser is None: 
+					continue
+				parser.feed(lines, myEventHandler, fileName=fileName)
+				nHands += 1
+				
+	t1 = time.time() - t0
+	print 'processed %s hands in %s seconds (%i/s)' % (nHands, t1, nHands / t1)
+		
+##runExample()
+#import cProfile
+#cProfile.run('runExample()')
 
 
 
