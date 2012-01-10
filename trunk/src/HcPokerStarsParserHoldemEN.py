@@ -85,7 +85,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	# PokerStars Home Game #0123456789: Hold'em No Limit ($0.00/$0.00 USD) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
 	
 	PatternGameHeader = re.compile(
-		"""^PokerStars\s Game \s
+		"""^PokerStars\s (Home\sGame\s)? Hand\s
 			\#(?P<handID>\d+)\:\s+
 			(?P<game>Hold\'em)\s
 			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
@@ -940,7 +940,7 @@ class PokerStarsParserHoldemENCashGameHomeGame2(PokerStarsParserHoldemENCashGame
 			)
 	
 	PatternGameHeader = re.compile(
-		"""^PokerStars\s Home\s Game\s
+		"""^PokerStars\s (Home\sGame\s)? Hand\s
 			\#(?P<handID>\d+)\:\s+
 			\{(?P<homeGameID>.+?)\}\s+
 			(?P<game>Hold\'em)\s
@@ -982,7 +982,7 @@ class PokerStarsParserHoldemENCashGame1(PokerStarsParserHoldemENCashGame2):
 		
 	# PokerStars Game #0123456789:  Hold'em No Limit ($0.00/$0.00) - 0000/00/00 00:00:00 TZ
 	PatternGameHeader = re.compile(
-		"""^PokerStars\s Game\s
+		"""^PokerStars\s (Home\sGame\s)? Hand\s
 			\#(?P<handID>\d+)\:\s+
 			(?P<game>Hold\'em)\s
 			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
@@ -1018,7 +1018,7 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 	#PokerStars Game #0123456789: Tournament #0123456789, 0000+000 Hold'em No Limit - Level I (10/20) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
 	#PokerStars Game #0123456789: Tournament #0123456789, $0.00+$0.00 USD Hold'em No Limit - Match Round I, Level I (10/20) - 0000/00/00 0:00:00 TZ [0000/00/00 0:00:00 TZ]
 	PatternGameHeader = re.compile(
-		"""^PokerStars\s Game\s
+		"""^PokerStars\s (Home\sGame\s)? Hand\s
 			\#(?P<handID>\d+)\:\s
 			Tournament\s \#(?P<tourneyID>\d+),\s
 			(?P<tourneyBuyInType>	
@@ -1160,7 +1160,7 @@ class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENTourney2):
 	
 	# PokerStars Game #0123456789: Tournament #0123456789, $0.00+$0.00 Hold'em No Limit - Level I (10/20) - 0000/00/00 00:00:00 ET
 	PatternGameHeader = re.compile(
-		"""^PokerStars\s Game\s
+		"""^PokerStars\s (Home\sGame\s)? Hand\s
 			\#(?P<handID>\d+)\:\s
 			Tournament\s \#(?P<tourneyID>\d+),\s
 			(?P<tourneyBuyInType>	
