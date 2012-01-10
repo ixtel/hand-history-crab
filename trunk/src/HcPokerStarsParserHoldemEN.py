@@ -32,6 +32,14 @@ import HcConfig
 #   in the pot that are raked with 3c.
 #
 # so mainPot is raked 0c, sidePot1 1c and sidePot2 4c.
+
+
+# POKERSTARS TIMELINE
+# 01-10-2012: PokerStars changes hand history file format: "PokerStars Game" in header is 
+#         now "PokerStars Hand". TODO: not clear how the change is for home games. my guess is
+#         "PokerStars Home Hame Hand"
+#12-28-2011: PokerStars announces switch to weighted contributed rake.
+
 #************************************************************************************
 # consts
 #************************************************************************************
@@ -85,7 +93,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	# PokerStars Home Game #0123456789: Hold'em No Limit ($0.00/$0.00 USD) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
 	
 	PatternGameHeader = re.compile(
-		"""^PokerStars\s (Home\sGame\s)? Hand\s
+		"""^PokerStars\s ((Home\s)? Game\s| (Home\sGame\s)? Hand\s)
 			\#(?P<handID>\d+)\:\s+
 			(?P<game>Hold\'em)\s
 			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
@@ -855,6 +863,35 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 		return True
 		
 	
+	KwPlayerShowsCards = ' shows '
+	PatternPlayerShowsCards = re.compile(
+		"""^(?P<name>.*?)\:\s shows\s 
+		\[
+			(?P<card1>[23456789TJQKA][cdhs])
+			(\s (?P<card2>[23456789TJQKA][cdhs]) )?
+		\]\s*$
+		""", re.X|re.I
+		)
+	@HcConfig.lineParserMethod(priority=410)
+	def parsePlayerShowsCards(self, lines, eventHandler, events, state):
+		oldLines = []
+		for i, line in enumerate(lines):
+			if self.KwPlayerShowsCards not in line[1]: continue
+			m = self.PatternPlayerShowsCards.match(line[1])
+			if m is not None:
+				oldLines.insert(0, i)
+				d = m.groupdict()
+				card2 = d.pop('card2')
+				if card2:
+					d['cards'] = (d.pop('card1'), card2)
+				else:
+					d['cards'] = (d.pop('card1'), )
+				events[line[2]] = (eventHandler.handlePlayerShows, d)
+		for i in oldLines:
+			del lines[i]
+		return True
+	
+	
 	#TODO: report event?
 	KwPlayerDoesNotShowHand = " doesn't show "
 	PatternPlayerDoesNotShowHand = re.compile(
@@ -940,7 +977,7 @@ class PokerStarsParserHoldemENCashGameHomeGame2(PokerStarsParserHoldemENCashGame
 			)
 	
 	PatternGameHeader = re.compile(
-		"""^PokerStars\s (Home\sGame\s)? Hand\s
+		"""^PokerStars\s ((Home\s)? Game\s| (Home\sGame\s)? Hand\s)
 			\#(?P<handID>\d+)\:\s+
 			\{(?P<homeGameID>.+?)\}\s+
 			(?P<game>Hold\'em)\s
@@ -982,7 +1019,7 @@ class PokerStarsParserHoldemENCashGame1(PokerStarsParserHoldemENCashGame2):
 		
 	# PokerStars Game #0123456789:  Hold'em No Limit ($0.00/$0.00) - 0000/00/00 00:00:00 TZ
 	PatternGameHeader = re.compile(
-		"""^PokerStars\s (Home\sGame\s)? Hand\s
+		"""^PokerStars\s ((Home\s)? Game\s| (Home\sGame\s)? Hand\s)
 			\#(?P<handID>\d+)\:\s+
 			(?P<game>Hold\'em)\s
 			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
@@ -1018,7 +1055,7 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 	#PokerStars Game #0123456789: Tournament #0123456789, 0000+000 Hold'em No Limit - Level I (10/20) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
 	#PokerStars Game #0123456789: Tournament #0123456789, $0.00+$0.00 USD Hold'em No Limit - Match Round I, Level I (10/20) - 0000/00/00 0:00:00 TZ [0000/00/00 0:00:00 TZ]
 	PatternGameHeader = re.compile(
-		"""^PokerStars\s (Home\sGame\s)? Hand\s
+		"""^PokerStars\s ((Home\s)? Game\s| (Home\sGame\s)? Hand\s)
 			\#(?P<handID>\d+)\:\s
 			Tournament\s \#(?P<tourneyID>\d+),\s
 			(?P<tourneyBuyInType>	
@@ -1160,7 +1197,7 @@ class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENTourney2):
 	
 	# PokerStars Game #0123456789: Tournament #0123456789, $0.00+$0.00 Hold'em No Limit - Level I (10/20) - 0000/00/00 00:00:00 ET
 	PatternGameHeader = re.compile(
-		"""^PokerStars\s (Home\sGame\s)? Hand\s
+		"""^PokerStars\s ((Home\s)? Game\s| (Home\sGame\s)? Hand\s)
 			\#(?P<handID>\d+)\:\s
 			Tournament\s \#(?P<tourneyID>\d+),\s
 			(?P<tourneyBuyInType>	
