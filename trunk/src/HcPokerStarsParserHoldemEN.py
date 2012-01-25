@@ -93,7 +93,7 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	# PokerStars Home Game #0123456789: Hold'em No Limit ($0.00/$0.00 USD) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
 	
 	PatternGameHeader = re.compile(
-		"""^PokerStars\s ((Home\s)? Game\s| (Home\sGame\s)? Hand\s)
+		"""^PokerStars\s Game \s
 			\#(?P<handID>\d+)\:\s+
 			(?P<game>Hold\'em)\s
 			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
@@ -977,7 +977,7 @@ class PokerStarsParserHoldemENCashGameHomeGame2(PokerStarsParserHoldemENCashGame
 			)
 	
 	PatternGameHeader = re.compile(
-		"""^PokerStars\s ((Home\s)? Game\s| (Home\sGame\s)? Hand\s)
+		"""^PokerStars\s Home\s Game\s
 			\#(?P<handID>\d+)\:\s+
 			\{(?P<homeGameID>.+?)\}\s+
 			(?P<game>Hold\'em)\s
@@ -1183,6 +1183,59 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 			del lines[i]
 		return True
 
+
+class PokerStarsParserHoldemENTourneyHomeGame2(PokerStarsParserHoldemENTourney2):
+	
+	ID = HcConfig.HcID(
+			dataType=HcConfig.DataTypeHand, 
+			language=HcConfig.LanguageEN,
+			game=HcConfig.GameHoldem,
+			gameContext=HcConfig.GameContextTourney,
+			gameScope=HcConfig.GameScopeHomeGame,
+			site=HcConfig.SitePokerStars,
+			version='2',
+			)
+			
+	PatternGameHeader = re.compile(
+		"""^PokerStars\s Home\s Game\s
+			\#(?P<handID>\d+)\:\s
+			Tournament\s \#(?P<tourneyID>\d+),\s
+			(?P<tourneyBuyInType>	
+				(
+					[^\d\.]?(?P<tourneyBuyIn>[\d\.]+)\+
+					[^\d\.]?(?P<tourneyRake>[\d\.]+)
+					(\+[^\d\.]? (?P<tourneyBounty>[\d\.]+) )?
+					(\s(?P<currency>[A-Z]+))?
+				)
+				|
+				Freeroll
+			)\s+
+			(?P<game>Hold\'em)\s
+			(?P<gameLimit>No\sLimit)\s
+			\-\s+ 
+			(Match\s Round\s [IVXLCDM]+, \s)?
+			Level\s[IVXLCDM]+\s
+			\(
+				[^\d\.]?(?P<smallBlind>[\d\.]+)\/
+				[^\d\.]?(?P<bigBlind>[\d\.]+)
+				\s?
+			\)
+			\s-\s
+			.*
+			\[
+				(?P<year>\d+)\/
+				(?P<month>\d+)\/
+				(?P<day>\d+)\s
+				(?P<hour>\d+)\:
+				(?P<minute>\d+)\:
+				(?P<second>\d+)
+				.*
+			\]\s*$
+		""", re.X|re.I
+		)
+
+
+
 class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENTourney2):
 	
 	ID = HcConfig.HcID(
@@ -1230,4 +1283,181 @@ class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENTourney2):
 			.+\s*$""", re.X|re.I
 		)
 			
+#************************************************************************************
+#
+#************************************************************************************
+# PokerStars header change (01.10.2011) - "PokerStars Game #" is now "PokerStars Hand #"
+
+class PokerStarsParserHoldemENCashGame3(PokerStarsParserHoldemENCashGame2):
+	ID = HcConfig.HcID(
+			dataType=HcConfig.DataTypeHand, 
+			language=HcConfig.LanguageEN,
+			game=HcConfig.GameHoldem,
+			gameContext=HcConfig.GameContextCashGame,
+			gameScope=HcConfig.GameScopeHomeGame,
+			site=HcConfig.SitePokerStars,
+			version='3',
+			)
 	
+	PatternGameHeader = re.compile(
+		"""^PokerStars\s Hand\s
+			\#(?P<handID>\d+)\:\s+
+			\{(?P<homeGameID>.+?)\}\s+
+			(?P<game>Hold\'em)\s
+			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
+			\(
+				[^\d\.]?(?P<smallBlind>[\d\.]+)\/
+				[^\d\.]?(?P<bigBlind>[\d\.]+)
+				\s?
+				(?P<currency>[A-Z]+)?
+			\)
+			\s-\s
+			.*
+			\[
+				(?P<year>\d+)\/
+				(?P<month>\d+)\/
+				(?P<day>\d+)\s
+				(?P<hour>\d+)\:
+				(?P<minute>\d+)\:
+				(?P<second>\d+)
+				.*
+			\]\s*$
+		""", re.X|re.I)
+	
+class PokerStarsParserHoldemENCashGameHomeGame3(PokerStarsParserHoldemENCashGameHomeGame2):
+	
+	ID = HcConfig.HcID(
+			dataType=HcConfig.DataTypeHand, 
+			language=HcConfig.LanguageEN,
+			game=HcConfig.GameHoldem,
+			gameContext=HcConfig.GameContextCashGame,
+			gameScope=HcConfig.GameScopeHomeGame,
+			site=HcConfig.SitePokerStars,
+			version='3',
+			)
+	
+	#TODO: got no HHs / confirmation that header now actually reads "PokerStars Home Game Hand #"
+	PatternGameHeader = re.compile(
+		"""^PokerStars\s Home\s Game\s Hand\s
+			\#(?P<handID>\d+)\:\s+
+			\{(?P<homeGameID>.+?)\}\s+
+			(?P<game>Hold\'em)\s
+			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
+			\(
+				[^\d\.]?(?P<smallBlind>[\d\.]+)\/
+				[^\d\.]?(?P<bigBlind>[\d\.]+)
+				\s?
+				(?P<currency>[A-Z]+)?
+			\)
+			\s-\s
+			.*
+			\[
+				(?P<year>\d+)\/
+				(?P<month>\d+)\/
+				(?P<day>\d+)\s
+				(?P<hour>\d+)\:
+				(?P<minute>\d+)\:
+				(?P<second>\d+)
+				.*
+			\]\s*$
+		""", re.X|re.I)
+	
+class PokerStarsParserHoldemENTourney3(PokerStarsParserHoldemENTourney2):
+	
+	ID = HcConfig.HcID(
+			dataType=HcConfig.DataTypeHand, 
+			language=HcConfig.LanguageEN,
+			game=HcConfig.GameHoldem,
+			gameContext=HcConfig.GameContextTourney,
+			gameScope=HcConfig.GameScopePublic,
+			site=HcConfig.SitePokerStars,
+			version='3',
+			)
+			
+	PatternGameHeader = re.compile(
+		"""^PokerStars\s Hand\s
+			\#(?P<handID>\d+)\:\s
+			Tournament\s \#(?P<tourneyID>\d+),\s
+			(?P<tourneyBuyInType>	
+				(
+					[^\d\.]?(?P<tourneyBuyIn>[\d\.]+)\+
+					[^\d\.]?(?P<tourneyRake>[\d\.]+)
+					(\+[^\d\.]? (?P<tourneyBounty>[\d\.]+) )?
+					(\s(?P<currency>[A-Z]+))?
+				)
+				|
+				Freeroll
+			)\s+
+			(?P<game>Hold\'em)\s
+			(?P<gameLimit>No\sLimit)\s
+			\-\s+ 
+			(Match\s Round\s [IVXLCDM]+, \s)?
+			Level\s[IVXLCDM]+\s
+			\(
+				[^\d\.]?(?P<smallBlind>[\d\.]+)\/
+				[^\d\.]?(?P<bigBlind>[\d\.]+)
+				\s?
+			\)
+			\s-\s
+			.*
+			\[
+				(?P<year>\d+)\/
+				(?P<month>\d+)\/
+				(?P<day>\d+)\s
+				(?P<hour>\d+)\:
+				(?P<minute>\d+)\:
+				(?P<second>\d+)
+				.*
+			\]\s*$
+		""", re.X|re.I
+		)
+		
+class PokerStarsParserHoldemENTourneyHomeGame3(PokerStarsParserHoldemENTourney3):
+	
+	ID = HcConfig.HcID(
+			dataType=HcConfig.DataTypeHand, 
+			language=HcConfig.LanguageEN,
+			game=HcConfig.GameHoldem,
+			gameContext=HcConfig.GameContextTourney,
+			gameScope=HcConfig.GameScopeHomeGame,
+			site=HcConfig.SitePokerStars,
+			version='3',
+			)
+			
+	PatternGameHeader = re.compile(
+		"""^PokerStars\s Home\s Game\s Hand\s
+			\#(?P<handID>\d+)\:\s
+			Tournament\s \#(?P<tourneyID>\d+),\s
+			(?P<tourneyBuyInType>	
+				(
+					[^\d\.]?(?P<tourneyBuyIn>[\d\.]+)\+
+					[^\d\.]?(?P<tourneyRake>[\d\.]+)
+					(\+[^\d\.]? (?P<tourneyBounty>[\d\.]+) )?
+					(\s(?P<currency>[A-Z]+))?
+				)
+				|
+				Freeroll
+			)\s+
+			(?P<game>Hold\'em)\s
+			(?P<gameLimit>No\sLimit)\s
+			\-\s+ 
+			(Match\s Round\s [IVXLCDM]+, \s)?
+			Level\s[IVXLCDM]+\s
+			\(
+				[^\d\.]?(?P<smallBlind>[\d\.]+)\/
+				[^\d\.]?(?P<bigBlind>[\d\.]+)
+				\s?
+			\)
+			\s-\s
+			.*
+			\[
+				(?P<year>\d+)\/
+				(?P<month>\d+)\/
+				(?P<day>\d+)\s
+				(?P<hour>\d+)\:
+				(?P<minute>\d+)\:
+				(?P<second>\d+)
+				.*
+			\]\s*$
+		""", re.X|re.I
+		)
