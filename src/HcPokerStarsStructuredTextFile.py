@@ -3,8 +3,6 @@ import codecs
 import HcConfig
 
 #TODO: extend sectionType() to identify more types
-#TODO: seen unicode BOM_BE trailing game headers. no idea why and what to do.
-#		our implementation simply treats them as unidentified section. 
 #************************************************************************************
 #
 #************************************************************************************
@@ -20,10 +18,10 @@ class PokerStarsStructuredTextFile(object):
 			data = fp.read()
 		except UnicodeDecodeError: pass
 		else:
-			#NOTE: remove BOM if present
-			if data.startswith(unicode(codecs.BOM_UTF8, 'utf-8')):
-				data = data[1:]
-			#NOTE: found that some files (TourneySumaries) are tagged with \x10
+			#NOTE: remove BOM(s) if present. seen unicode BOM_BE trailing game headers
+			# even within HHs (no idea why), so for now we remove all BOMs unconditionally
+			data = data.replace(unicode(codecs.BOM_UTF8, 'utf-8'), '')
+			#NOTE: found that some files start with \x10 (TourneySumaries)
 			if data.startswith('\x10'):
 				data = data[1:]
 		finally:
