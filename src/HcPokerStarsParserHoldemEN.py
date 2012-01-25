@@ -63,9 +63,10 @@ CurrencyMapping = {
 		}
 
 #************************************************************************************
-# parser implementation
+# parser implementations
 #************************************************************************************
-class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
+# older header - no local date/time in header
+class PokerStarsParserHoldemENCashGame1(HcConfig.LineParserBase):
 	
 	ID = HcConfig.HcID(
 			dataType=HcConfig.DataTypeHand, 
@@ -74,9 +75,29 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 			gameContext=HcConfig.GameContextCashGame,
 			gameScope=HcConfig.GameScopePublic,
 			site=HcConfig.SitePokerStars,
-			version='2',
-			)
-			
+			version='1',
+			) 
+		
+	# PokerStars Game #0123456789:  Hold'em No Limit ($0.00/$0.00) - 0000/00/00 00:00:00 TZ
+	PatternGameHeader = re.compile(
+		"""^PokerStars\s ((Home\s)? Game\s| (Home\sGame\s)? Hand\s)
+			\#(?P<handID>\d+)\:\s+
+			(?P<game>Hold\'em)\s
+			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
+			\(
+				[^\d\.]?(?P<smallBlind>[\d\.]+)\/
+				[^\d\.]?(?P<bigBlind>[\d\.]+)
+			\)
+			\s-\s
+			(?P<year>\d+)\/
+			(?P<month>\d+)\/
+			(?P<day>\d+)\s
+			(?P<hour>\d+)\:
+			(?P<minute>\d+)\:
+			(?P<second>\d+)
+			.+\s*$""", re.X|re.I
+		)
+
 	def __init__(self, *args, **kws):
 		HcConfig.LineParserBase.__init__(self, *args, **kws)
 		self._seatNoButton = 0
@@ -88,35 +109,6 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 	def stringToFloat(self, amount):
 		return float(amount)
 		
-	
-	# PokerStars Home Game #0123456789: {HomeGameName}  Hold'em No Limit ($0.00/$0.00 USD) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
-	# PokerStars Home Game #0123456789: Hold'em No Limit ($0.00/$0.00 USD) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
-	
-	PatternGameHeader = re.compile(
-		"""^PokerStars\s Game \s
-			\#(?P<handID>\d+)\:\s+
-			(?P<game>Hold\'em)\s
-			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
-			\(
-				[^\d\.]?(?P<smallBlind>[\d\.]+)\/
-				[^\d\.]?(?P<bigBlind>[\d\.]+)
-				\s?
-				(?P<currency>[A-Z]+)?
-			\)
-			\s-\s
-			.*
-			\[
-				(?P<year>\d+)\/
-				(?P<month>\d+)\/
-				(?P<day>\d+)\s
-				(?P<hour>\d+)\:
-				(?P<minute>\d+)\:
-				(?P<second>\d+)
-				.*
-			\]\s*$
-		""", re.X|re.I
-		)
-	
 	PatternTableHeader = re.compile(
 		"""^Table\s \'(?P<tableName>[^\']+)\'\s
 			(?P<maxPlayers>\d+)\-max\s
@@ -959,88 +951,10 @@ class PokerStarsParserHoldemENCashGame2(HcConfig.LineParserBase):
 				oldLines.insert(0, i)	
 		for i in oldLines:
 			del lines[i]
-		return True
+		return True	
 
-#************************************************************************************
-#
-#************************************************************************************
-class PokerStarsParserHoldemENCashGameHomeGame2(PokerStarsParserHoldemENCashGame2):
-	
-	ID = HcConfig.HcID(
-			dataType=HcConfig.DataTypeHand, 
-			language=HcConfig.LanguageEN,
-			game=HcConfig.GameHoldem,
-			gameContext=HcConfig.GameContextCashGame,
-			gameScope=HcConfig.GameScopeHomeGame,
-			site=HcConfig.SitePokerStars,
-			version='2',
-			)
-	
-	PatternGameHeader = re.compile(
-		"""^PokerStars\s Home\s Game\s
-			\#(?P<handID>\d+)\:\s+
-			\{(?P<homeGameID>.+?)\}\s+
-			(?P<game>Hold\'em)\s
-			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
-			\(
-				[^\d\.]?(?P<smallBlind>[\d\.]+)\/
-				[^\d\.]?(?P<bigBlind>[\d\.]+)
-				\s?
-				(?P<currency>[A-Z]+)?
-			\)
-			\s-\s
-			.*
-			\[
-				(?P<year>\d+)\/
-				(?P<month>\d+)\/
-				(?P<day>\d+)\s
-				(?P<hour>\d+)\:
-				(?P<minute>\d+)\:
-				(?P<second>\d+)
-				.*
-			\]\s*$
-		""", re.X|re.I)
-		
-#************************************************************************************
-#
-#************************************************************************************
-# older header - no local date/time in header
-class PokerStarsParserHoldemENCashGame1(PokerStarsParserHoldemENCashGame2):
-	
-	ID = HcConfig.HcID(
-			dataType=HcConfig.DataTypeHand, 
-			language=HcConfig.LanguageEN,
-			game=HcConfig.GameHoldem,
-			gameContext=HcConfig.GameContextCashGame,
-			gameScope=HcConfig.GameScopePublic,
-			site=HcConfig.SitePokerStars,
-			version='1',
-			) 
-		
-	# PokerStars Game #0123456789:  Hold'em No Limit ($0.00/$0.00) - 0000/00/00 00:00:00 TZ
-	PatternGameHeader = re.compile(
-		"""^PokerStars\s ((Home\s)? Game\s| (Home\sGame\s)? Hand\s)
-			\#(?P<handID>\d+)\:\s+
-			(?P<game>Hold\'em)\s
-			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
-			\(
-				[^\d\.]?(?P<smallBlind>[\d\.]+)\/
-				[^\d\.]?(?P<bigBlind>[\d\.]+)
-			\)
-			\s-\s
-			(?P<year>\d+)\/
-			(?P<month>\d+)\/
-			(?P<day>\d+)\s
-			(?P<hour>\d+)\:
-			(?P<minute>\d+)\:
-			(?P<second>\d+)
-			.+\s*$""", re.X|re.I
-		)
 
-#************************************************************************************
-#
-#************************************************************************************
-class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
+class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENCashGame1):
 	
 	ID = HcConfig.HcID(
 			dataType=HcConfig.DataTypeHand, 
@@ -1049,11 +963,10 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 			gameContext=HcConfig.GameContextTourney,
 			gameScope=HcConfig.GameScopePublic,
 			site=HcConfig.SitePokerStars,
-			version='2',
+			version='1',
 			)
 	
-	#PokerStars Game #0123456789: Tournament #0123456789, 0000+000 Hold'em No Limit - Level I (10/20) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
-	#PokerStars Game #0123456789: Tournament #0123456789, $0.00+$0.00 USD Hold'em No Limit - Match Round I, Level I (10/20) - 0000/00/00 0:00:00 TZ [0000/00/00 0:00:00 TZ]
+	# PokerStars Game #0123456789: Tournament #0123456789, $0.00+$0.00 Hold'em No Limit - Level I (10/20) - 0000/00/00 00:00:00 ET
 	PatternGameHeader = re.compile(
 		"""^PokerStars\s ((Home\s)? Game\s| (Home\sGame\s)? Hand\s)
 			\#(?P<handID>\d+)\:\s
@@ -1079,19 +992,15 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 				\s?
 			\)
 			\s-\s
-			.*
-			\[
-				(?P<year>\d+)\/
-				(?P<month>\d+)\/
-				(?P<day>\d+)\s
-				(?P<hour>\d+)\:
-				(?P<minute>\d+)\:
-				(?P<second>\d+)
-				.*
-			\]\s*$
-		""", re.X|re.I
+			(?P<year>\d+)\/
+			(?P<month>\d+)\/
+			(?P<day>\d+)\s
+			(?P<hour>\d+)\:
+			(?P<minute>\d+)\:
+			(?P<second>\d+)
+			.+\s*$""", re.X|re.I
 		)
-	
+
 	@HcConfig.lineParserMethod(priority=1)
 	def parseGameHeader(self, lines, eventHandler, events, state):
 		if not PokerStarsParserHoldemENCashGame1.parseGameHeader(self, lines, eventHandler, events, state):
@@ -1184,6 +1093,140 @@ class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENCashGame1):
 		return True
 
 
+#************************************************************************************
+# parser implementations
+#************************************************************************************
+# newer header - local date/time in header
+class PokerStarsParserHoldemENCashGame2(PokerStarsParserHoldemENCashGame1):
+	
+	ID = HcConfig.HcID(
+			dataType=HcConfig.DataTypeHand, 
+			language=HcConfig.LanguageEN,
+			game=HcConfig.GameHoldem,
+			gameContext=HcConfig.GameContextCashGame,
+			gameScope=HcConfig.GameScopePublic,
+			site=HcConfig.SitePokerStars,
+			version='2',
+			)
+	
+	# PokerStars Home Game #0123456789: {HomeGameName}  Hold'em No Limit ($0.00/$0.00 USD) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
+	# PokerStars Home Game #0123456789: Hold'em No Limit ($0.00/$0.00 USD) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
+	PatternGameHeader = re.compile(
+		"""^PokerStars\s Game \s
+			\#(?P<handID>\d+)\:\s+
+			(?P<game>Hold\'em)\s
+			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
+			\(
+				[^\d\.]?(?P<smallBlind>[\d\.]+)\/
+				[^\d\.]?(?P<bigBlind>[\d\.]+)
+				\s?
+				(?P<currency>[A-Z]+)?
+			\)
+			\s-\s
+			.*
+			\[
+				(?P<year>\d+)\/
+				(?P<month>\d+)\/
+				(?P<day>\d+)\s
+				(?P<hour>\d+)\:
+				(?P<minute>\d+)\:
+				(?P<second>\d+)
+				.*
+			\]\s*$
+		""", re.X|re.I
+		)
+	
+
+class PokerStarsParserHoldemENCashGameHomeGame2(PokerStarsParserHoldemENCashGame2):
+	
+	ID = HcConfig.HcID(
+			dataType=HcConfig.DataTypeHand, 
+			language=HcConfig.LanguageEN,
+			game=HcConfig.GameHoldem,
+			gameContext=HcConfig.GameContextCashGame,
+			gameScope=HcConfig.GameScopeHomeGame,
+			site=HcConfig.SitePokerStars,
+			version='2',
+			)
+	
+	PatternGameHeader = re.compile(
+		"""^PokerStars\s Home\s Game\s
+			\#(?P<handID>\d+)\:\s+
+			\{(?P<homeGameID>.+?)\}\s+
+			(?P<game>Hold\'em)\s
+			(?P<gameLimit>(No\sLimit|Pot\sLimit|Fixed\sLimit))\s
+			\(
+				[^\d\.]?(?P<smallBlind>[\d\.]+)\/
+				[^\d\.]?(?P<bigBlind>[\d\.]+)
+				\s?
+				(?P<currency>[A-Z]+)?
+			\)
+			\s-\s
+			.*
+			\[
+				(?P<year>\d+)\/
+				(?P<month>\d+)\/
+				(?P<day>\d+)\s
+				(?P<hour>\d+)\:
+				(?P<minute>\d+)\:
+				(?P<second>\d+)
+				.*
+			\]\s*$
+		""", re.X|re.I)
+
+class PokerStarsParserHoldemENTourney2(PokerStarsParserHoldemENTourney1):
+	
+	ID = HcConfig.HcID(
+			dataType=HcConfig.DataTypeHand, 
+			language=HcConfig.LanguageEN,
+			game=HcConfig.GameHoldem,
+			gameContext=HcConfig.GameContextTourney,
+			gameScope=HcConfig.GameScopePublic,
+			site=HcConfig.SitePokerStars,
+			version='2',
+			)
+	
+	#PokerStars Game #0123456789: Tournament #0123456789, 0000+000 Hold'em No Limit - Level I (10/20) - 0000/00/00 00:00:00 TZ [0000/00/00 00:00:00 TZ]
+	#PokerStars Game #0123456789: Tournament #0123456789, $0.00+$0.00 USD Hold'em No Limit - Match Round I, Level I (10/20) - 0000/00/00 0:00:00 TZ [0000/00/00 0:00:00 TZ]
+	PatternGameHeader = re.compile(
+		"""^PokerStars\s ((Home\s)? Game\s| (Home\sGame\s)? Hand\s)
+			\#(?P<handID>\d+)\:\s
+			Tournament\s \#(?P<tourneyID>\d+),\s
+			(?P<tourneyBuyInType>	
+				(
+					[^\d\.]?(?P<tourneyBuyIn>[\d\.]+)\+
+					[^\d\.]?(?P<tourneyRake>[\d\.]+)
+					(\+[^\d\.]? (?P<tourneyBounty>[\d\.]+) )?
+					(\s(?P<currency>[A-Z]+))?
+				)
+				|
+				Freeroll
+			)\s+
+			(?P<game>Hold\'em)\s
+			(?P<gameLimit>No\sLimit)\s
+			\-\s+ 
+			(Match\s Round\s [IVXLCDM]+, \s)?
+			Level\s[IVXLCDM]+\s
+			\(
+				[^\d\.]?(?P<smallBlind>[\d\.]+)\/
+				[^\d\.]?(?P<bigBlind>[\d\.]+)
+				\s?
+			\)
+			\s-\s
+			.*
+			\[
+				(?P<year>\d+)\/
+				(?P<month>\d+)\/
+				(?P<day>\d+)\s
+				(?P<hour>\d+)\:
+				(?P<minute>\d+)\:
+				(?P<second>\d+)
+				.*
+			\]\s*$
+		""", re.X|re.I
+		)
+
+
 class PokerStarsParserHoldemENTourneyHomeGame2(PokerStarsParserHoldemENTourney2):
 	
 	ID = HcConfig.HcID(
@@ -1236,58 +1279,10 @@ class PokerStarsParserHoldemENTourneyHomeGame2(PokerStarsParserHoldemENTourney2)
 
 
 
-class PokerStarsParserHoldemENTourney1(PokerStarsParserHoldemENTourney2):
-	
-	ID = HcConfig.HcID(
-			dataType=HcConfig.DataTypeHand, 
-			language=HcConfig.LanguageEN,
-			game=HcConfig.GameHoldem,
-			gameContext=HcConfig.GameContextTourney,
-			gameScope=HcConfig.GameScopePublic,
-			site=HcConfig.SitePokerStars,
-			version='1',
-			)
-	
-	# PokerStars Game #0123456789: Tournament #0123456789, $0.00+$0.00 Hold'em No Limit - Level I (10/20) - 0000/00/00 00:00:00 ET
-	PatternGameHeader = re.compile(
-		"""^PokerStars\s ((Home\s)? Game\s| (Home\sGame\s)? Hand\s)
-			\#(?P<handID>\d+)\:\s
-			Tournament\s \#(?P<tourneyID>\d+),\s
-			(?P<tourneyBuyInType>	
-				(
-					[^\d\.]?(?P<tourneyBuyIn>[\d\.]+)\+
-					[^\d\.]?(?P<tourneyRake>[\d\.]+)
-					(\+[^\d\.]? (?P<tourneyBounty>[\d\.]+) )?
-					(\s(?P<currency>[A-Z]+))?
-				)
-				|
-				Freeroll
-			)\s+
-			(?P<game>Hold\'em)\s
-			(?P<gameLimit>No\sLimit)\s
-			\-\s+ 
-			(Match\s Round\s [IVXLCDM]+, \s)?
-			Level\s[IVXLCDM]+\s
-			\(
-				[^\d\.]?(?P<smallBlind>[\d\.]+)\/
-				[^\d\.]?(?P<bigBlind>[\d\.]+)
-				\s?
-			\)
-			\s-\s
-			(?P<year>\d+)\/
-			(?P<month>\d+)\/
-			(?P<day>\d+)\s
-			(?P<hour>\d+)\:
-			(?P<minute>\d+)\:
-			(?P<second>\d+)
-			.+\s*$""", re.X|re.I
-		)
-			
 #************************************************************************************
 #
 #************************************************************************************
 # PokerStars header change (01.10.2011) - "PokerStars Game #" is now "PokerStars Hand #"
-
 class PokerStarsParserHoldemENCashGame3(PokerStarsParserHoldemENCashGame2):
 	ID = HcConfig.HcID(
 			dataType=HcConfig.DataTypeHand, 
