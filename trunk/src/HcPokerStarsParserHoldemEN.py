@@ -14,7 +14,7 @@ import HcConfig
 #************************************************************************************
 #NOTES:
 #
-# PokerStars rake (thanks PokerStars nick): 
+# PokerStars incremental rake (thanks PokerStars nick): 
 # -----------------------------------------
 # pot total gives the rake to be taken, according to [http://www.pokerstars.com/poker/room/rake/].
 # rake is then taken from each pot (starting from  the main pot) when the threshold is hit.
@@ -39,6 +39,7 @@ import HcConfig
 #         now "PokerStars Hand". TODO: not clear how the change is for home games. my guess is
 #         "PokerStars Home Hame Hand"
 #12-28-2011: PokerStars announces switch to weighted contributed rake.
+# FEB - 2012: feb 01, 02 (?) there was a bug in HHs. hand winners where shown as loosing - 'player shows [hand] and lost $$$'
 
 #************************************************************************************
 # consts
