@@ -35,11 +35,14 @@ import HcConfig
 
 
 # POKERSTARS TIMELINE
-# 01-10-2012: PokerStars changes hand history file format: "PokerStars Game" in header is 
+# 02.2012: feb 01, 02 (?) there was a bug in HHs. summary where hand winners where shown as loosing: 
+#            'Seat N: "playerName" showed [cards] and lost ($$$$) with ...'
+#             instead of
+#             'Seat N: "playerName" showed [cards] and won ($$$$) with ...'
+# 12.28.2011: PokerStars announces switch to weighted contributed rake.
+# 01.10.2012: PokerStars changes hand history file format: "PokerStars Game" in header is 
 #         now "PokerStars Hand". TODO: not clear how the change is for home games. my guess is
 #         "PokerStars Home Hame Hand"
-#12-28-2011: PokerStars announces switch to weighted contributed rake.
-# FEB - 2012: feb 01, 02 (?) there was a bug in HHs. hand winners where shown as loosing - 'player shows [hand] and lost $$$'
 
 #************************************************************************************
 # consts
